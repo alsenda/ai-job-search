@@ -1,0 +1,109 @@
+{
+  "id": "developer-l2",
+  "title": "Developer — Level 2: Working Professional",
+  "track": "developer",
+  "level": 2,
+  "description": "Generators, typing, SQL performance, testing discipline, concurrency vocabulary, and API robustness.",
+  "questions": [
+    {
+      "id": "generators-lazy",
+      "type": "flashcard",
+      "topic": "Python internals",
+      "prompt": "Explain Python generators: how they work under the hood, and give two concrete situations where they beat building a list.",
+      "answer_notes": "A function with `yield` returns a generator object without running its body; each `next()` runs to the next yield and freezes the frame (locals, instruction pointer) — lazy evaluation with O(1) memory per element. Beats a list when: (1) streaming large data — processing a 10GB log file line by line instead of loading it; (2) pipelines with early exit — `next(x for x in items if pred(x))` stops at the first hit instead of computing everything. Also: generators compose into pipelines (map/filter chains), and generator exhaustion is one-shot — a classic bug when iterating twice. Bonus depth: `yield from`, and that generators underpin the original async/await design.",
+      "difficulty_rationale": "Standard mid-level Python depth-check.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["python", "generators", "memory"] }
+    },
+    {
+      "id": "n-plus-one",
+      "type": "mc",
+      "topic": "SQL & ORM",
+      "prompt": "A page listing 100 orders with customer names takes 4 seconds. Logs show 101 SQL queries. What is the problem and fix?",
+      "options": [
+        "The N+1 query problem: one query for orders, then one per order for its customer — fix with a JOIN or the ORM's eager loading",
+        "The database needs more RAM",
+        "HTTP keep-alive is disabled",
+        "100 queries is normal; add a loading spinner"
+      ],
+      "correct_index": 0,
+      "answer_notes": "ORMs lazily load relations by default: iterating orders and touching .customer fires a query per row. Fix: eager load (SQLAlchemy selectinload/joinedload, Django select_related/prefetch_related) or write the JOIN, collapsing 101 queries into 1-2. Detection: query counts in APM/debug toolbars, and tests that assert query counts on hot paths. This is among the most common real-world performance bugs and interviewers love it because it's diagnosable from symptoms.",
+      "difficulty_rationale": "Ubiquitous production issue; instant-recognition expected at mid level.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["sql", "orm", "performance"] }
+    },
+    {
+      "id": "typing-value",
+      "type": "flashcard",
+      "topic": "Type systems",
+      "prompt": "Python type hints don't run at runtime. Argue their engineering value, where they pay off most, and their limits.",
+      "answer_notes": "Value: static analysis (mypy/pyright) catches a class of bugs before execution (None-handling, wrong arguments, refactor fallout); types are checked documentation that can't drift silently like comments; IDE completion and safe refactoring improve for the whole team; and they force interface thinking. Pay off most: public function signatures, data models (dataclasses/Pydantic — which DO validate at runtime), long-lived codebases with multiple contributors. Limits: no runtime enforcement (external data still needs validation at boundaries — the type says str, the JSON may disagree), gradual-typing escape hatches (Any) erode guarantees, and highly dynamic code fights the checker. The mature position: strict typing at boundaries and cores, pragmatism in glue and tests — plus CI enforcement, because unchecked hints rot.",
+      "difficulty_rationale": "Judgment question that reveals experience with real multi-dev codebases.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["python", "typing", "quality"] }
+    },
+    {
+      "id": "index-mechanics",
+      "type": "mc",
+      "topic": "SQL",
+      "prompt": "Adding an index on users.email makes 'WHERE email = ?' fast. Which statement about its costs and limits is correct?",
+      "options": [
+        "The index speeds reads but taxes every INSERT/UPDATE, and it won't help queries that wrap the column in a function like LOWER(email) unless the index is expression-based",
+        "Indexes are free — databases add them automatically where needed",
+        "An index speeds up all queries on the table equally",
+        "Indexes only work on numeric columns"
+      ],
+      "correct_index": 0,
+      "answer_notes": "A B-tree index is a sorted structure maintained on every write — more indexes, slower writes and more storage. It serves equality/range predicates on the indexed expression: LOWER(email) = ? skips a plain index (fix: expression index or citext); leading-wildcard LIKE '%x' can't use a B-tree. Composite indexes serve leftmost-prefix queries. The professional habit: EXPLAIN/EXPLAIN ANALYZE before and after, index for actual query patterns, and drop unused indexes. Mention covering indexes (index-only scans) for hot reads as a bonus.",
+      "difficulty_rationale": "Index mechanics beyond 'indexes make it fast' — the mid-level bar.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["sql", "performance", "databases"] }
+    },
+    {
+      "id": "tdd-when",
+      "type": "flashcard",
+      "topic": "Testing",
+      "prompt": "What does a good unit test look like, and what makes tests actively harmful? Include your take on mocking discipline.",
+      "answer_notes": "Good: tests one behavior with a descriptive name; arrange-act-assert shape; deterministic and fast; survives refactoring because it asserts observable behavior, not internals; failure message points at the cause. Harmful: tests coupled to implementation (break on every refactor → maintenance tax that trains people to delete tests), flaky tests (erode trust in the suite — worse than no test), and over-mocked tests where everything is stubbed and the test proves only that the mocks call each other — green suite, broken integration. Mocking discipline: mock at system boundaries you don't control (network, clock, randomness, third-party APIs); prefer real objects or fakes for your own code; if a unit needs five mocks, the design has too many dependencies — fix the design. Bonus: property-based testing for algorithmic code, and every bug fix ships with the regression test that would have caught it.",
+      "difficulty_rationale": "Testing philosophy with teeth; separates practitioners from checkbox-coverage devs.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["testing", "quality", "design"] }
+    },
+    {
+      "id": "gil-basics",
+      "type": "mc",
+      "topic": "Concurrency",
+      "prompt": "Your Python service does heavy JSON parsing (pure Python, CPU-bound). Threads don't speed it up. Why, and what does?",
+      "options": [
+        "The GIL lets only one thread execute Python bytecode at a time, so CPU-bound threads serialize — use multiprocessing (or a C-accelerated library) for real parallelism",
+        "Python threads are green threads that never use multiple cores for anything",
+        "JSON parsing is I/O-bound so threads should have worked",
+        "Increase the thread count until the GIL saturates"
+      ],
+      "correct_index": 0,
+      "answer_notes": "The Global Interpreter Lock serializes bytecode execution: threads interleave but never run Python code in parallel, so CPU-bound work gains nothing (adds overhead). Threads DO help I/O-bound work (the GIL is released while waiting on sockets/disk) and C extensions that release it (numpy, orjson). For CPU-bound: multiprocessing/ProcessPoolExecutor (separate interpreters), or push the hot loop into C-backed libraries. Know the current frontier: free-threaded CPython (PEP 703) exists as an optional build, and subinterpreters (PEP 734) — mentioning them signals currency.",
+      "difficulty_rationale": "The canonical Python concurrency question, still asked everywhere.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["python", "concurrency", "gil"] }
+    },
+    {
+      "id": "retry-backoff",
+      "type": "flashcard",
+      "topic": "API robustness",
+      "prompt": "Your service calls a flaky third-party API. Design the client-side resilience: retries, backoff, and the failure modes naive retry creates.",
+      "answer_notes": "Retry only idempotent operations (or use idempotency keys); retry only retryable failures (timeouts, 429, 5xx — never 400/401/422). Exponential backoff with jitter (randomization prevents synchronized retry storms from many clients); cap attempts and total time budget. Respect Retry-After headers. Add a circuit breaker: after repeated failures, fail fast for a cooldown instead of hammering a dying dependency — protects both sides and your own thread pools. Naive-retry failure modes: retry storms amplifying outages (the thundering herd), duplicated side effects on non-idempotent calls, and latency stacking (3 retries × 30s timeout = 90s user wait — set aggressive per-try timeouts). Wrap it in metrics: retry rate is an early-warning signal. Mention deadline propagation if you want senior credit.",
+      "difficulty_rationale": "Production-resilience design; a very common practical interview scenario.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["reliability", "api-design", "distributed-systems"] }
+    },
+    {
+      "id": "context-managers",
+      "type": "mc",
+      "topic": "Python internals",
+      "prompt": "What problem do context managers (with blocks) solve, and how does one work?",
+      "options": [
+        "Guaranteed cleanup on any exit path: __enter__ acquires, __exit__ releases even on exceptions — files, locks, transactions",
+        "They speed up file reading through buffering",
+        "They create a new process for isolation",
+        "They are syntactic sugar for try/if with no exception behavior"
+      ],
+      "correct_index": 0,
+      "answer_notes": "`with` calls __enter__, runs the block, and guarantees __exit__ runs whether the block completes, raises, or returns — deterministic resource cleanup without try/finally boilerplate. __exit__ receives exception info and can suppress by returning True (rarely wise). Write your own with @contextlib.contextmanager (yield in a try/finally). Canonical uses: files, DB transactions (commit/rollback), locks, temporary state changes (monkeypatching in tests, timing blocks). Follow-up interviewers like: what happens if __enter__ raises (exit never runs — acquire carefully), and ExitStack for dynamic collections of resources.",
+      "difficulty_rationale": "Mid-level Python idiom fluency.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["python", "resource-management"] }
+    }
+  ]
+}

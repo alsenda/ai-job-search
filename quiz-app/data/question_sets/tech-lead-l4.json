@@ -1,0 +1,95 @@
+{
+  "id": "tech-lead-l4",
+  "title": "Tech Lead — Level 4: Expert Scenarios",
+  "track": "tech-lead",
+  "level": 4,
+  "description": "Staff-level trade-offs: consistency models, org-scale architecture, technical strategy, and the hardest leadership calls.",
+  "questions": [
+    {
+      "id": "cap-consistency",
+      "type": "flashcard",
+      "topic": "Distributed systems",
+      "prompt": "Explain CAP theorem the way a staff engineer should — including why 'choose two of three' is misleading and what PACELC adds. Ground it with one system example each way.",
+      "answer_notes": "CAP: under a network partition, a distributed system must choose between consistency (every read sees the latest write) and availability (every request gets a response). 'Choose two' misleads because partition tolerance isn't optional — real networks partition — so the real choice is only C-vs-A *during partitions*. PACELC completes it: even without partitions (Else), you trade Latency vs Consistency, which is the trade you live with daily. Examples: an etcd/ZooKeeper-style CP store refuses writes without quorum (correctness over uptime — right for locks/config); a Dynamo-style AP store accepts writes on both sides of a partition and reconciles later (uptime over freshness — right for carts/likes). Staff-level close: consistency is per-operation, not per-system — banks run ledgers CP and product catalogs eventually consistent; pick per business invariant, and name the reconciliation strategy for any AP choice.",
+      "difficulty_rationale": "The depth interviewers use to separate staff-level from senior-level distributed-systems reasoning.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["distributed-systems", "consistency", "trade-offs"] }
+    },
+    {
+      "id": "event-driven-pitfalls",
+      "type": "flashcard",
+      "topic": "Architecture",
+      "prompt": "Your org is moving to event-driven microservices with Kafka. Enumerate the failure modes and design disciplines that determine success — the things evangelists don't mention.",
+      "answer_notes": "Failure modes: hidden coupling via event schemas (producers break consumers silently — need schema registry + compatibility rules); loss of causality/ordering guarantees beyond a partition; dual-write inconsistency (DB commit + event publish must be atomic → transactional outbox pattern); at-least-once delivery meeting non-idempotent consumers; event-storming into an unqueryable 'what is the current state?' mess (need materialized views/CQRS discipline); and debugging distributed sagas without correlation IDs and tracing. Disciplines: contract-first schemas with evolution rules, idempotent consumers + dead-letter queues with real triage, outbox/CDC for atomicity, per-flow observability (correlation IDs), and honest saga design with compensating actions for every step. Staff answer includes: some workflows are simpler as synchronous calls — event-driven is a tool, not an identity.",
+      "difficulty_rationale": "Expert-level architecture realism about a hype-heavy pattern.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["architecture", "event-driven", "distributed-systems"] }
+    },
+    {
+      "id": "tech-strategy",
+      "type": "flashcard",
+      "topic": "Technical strategy",
+      "prompt": "New CTO asks you for a one-year technical strategy for a 40-engineer product org drowning in incidents and slow delivery. What does your strategy document contain and how do you build buy-in?",
+      "answer_notes": "Contents: diagnosis first (incident/root-cause data, DORA metrics, delivery bottleneck analysis, engineer survey — where does time actually go); a small set of guiding policies (e.g. 'stabilize the top 3 incident sources before any new platform work', 'golden-path tooling over team-by-team snowflakes'); concrete sequenced actions with owners and success metrics; explicit non-goals (what we will NOT do this year — the part that makes it a strategy); and risks with kill criteria. Anti-pattern: a technology shopping list ('adopt Kubernetes, GraphQL, microservices') with no connection to the diagnosis. Buy-in: co-create the diagnosis with tech leads so it's 'our data' not 'your opinion'; socialize drafts 1:1 before any big meeting; secure one visible early win in the first quarter to build credibility; report progress against the stated metrics quarterly, including the misses. Reference: good strategy = diagnosis, guiding policy, coherent action (Rumelt).",
+      "difficulty_rationale": "Staff/principal-level strategy formulation — a defining expert question.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["strategy", "leadership", "metrics"] }
+    },
+    {
+      "id": "db-migration-zero-downtime",
+      "type": "flashcard",
+      "topic": "Migrations",
+      "prompt": "Plan a zero-downtime schema change: renaming a heavily-used column in a table with 500M rows, with 20 services reading it. Give the exact phase sequence.",
+      "answer_notes": "Expand-migrate-contract: (1) Expand: add the new column (nullable/with default — beware table-lock semantics on your DB version; use online DDL/pt-online-schema-change if needed). (2) Dual-write: deploy code writing both columns (behind a flag); backfill old rows in batches (throttled, resumable, off-peak) with progress metrics. (3) Migrate readers: switch the 20 services to read the new column — service by service, verifiable, with a comparison mode (read both, log mismatches) for the paranoid-critical paths. (4) Verify parity: mismatch rate zero over a defined window. (5) Contract: stop writing old column, then drop it after a safety period — the drop is the only irreversible step, so it goes last, weeks later. Never: rename in place, or trust 'we found all the readers' without telemetry (query logs/column-level usage stats). This sequencing pattern — every step reversible, verification between steps — is what the interviewer is grading.",
+      "difficulty_rationale": "Operational excellence question that exposes whether you've done it for real.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["migrations", "databases", "operations"] }
+    },
+    {
+      "id": "conway-org-design",
+      "type": "mc",
+      "topic": "Org & architecture",
+      "prompt": "Conway's Law says systems mirror the communication structure of the orgs that build them. What is its most important practical implication for a lead planning architecture?",
+      "options": [
+        "Architecture and team boundaries must be designed together — the 'inverse Conway maneuver' — because misaligned ownership produces tangled systems regardless of the diagram",
+        "Communication between teams should be forbidden to keep services decoupled",
+        "It only applies to companies over 10,000 people",
+        "It means remote teams cannot build monoliths"
+      ],
+      "correct_index": 0,
+      "answer_notes": "If three teams share one service, its internals will fragment into three styles with contested seams; if one team owns three services, they'll blur into a distributed monolith. Practical use: define desired system boundaries (bounded contexts), then shape team ownership to match — stream-aligned teams owning services end-to-end, platform teams reducing cognitive load (Team Topologies vocabulary lands well here). Also: an architecture proposal that ignores who maintains each piece is incomplete; ownership gaps become the next incident source.",
+      "difficulty_rationale": "Socio-technical systems thinking expected at staff level.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["architecture", "org-design", "leadership"] }
+    },
+    {
+      "id": "two-strong-engineers-conflict",
+      "type": "flashcard",
+      "topic": "People scenarios",
+      "prompt": "Two strong senior engineers are locked in a months-long architectural feud (event sourcing vs CRUD) that is now splitting the team into camps. Resolve it.",
+      "answer_notes": "This is now a people problem wearing a technical costume — treat both layers. Technical layer: force convergence on decision criteria before positions ('what must this system guarantee? what can we afford to operate?'), time-box a spike/prototype against those criteria if genuinely undecidable on paper, then make the call explicitly (you or a designated decider), document it as an ADR with revisit conditions, and require disagree-and-commit. People layer: talk to each privately — long feuds usually carry status/recognition stakes ('losing' publicly); give the 'losing' engineer real ownership in the chosen direction and credit their concerns in the ADR (their risks become monitored assumptions). Team layer: name the camp dynamic openly in retro, re-establish that decisions bind everyone. If one engineer keeps relitigating after commitment, that's a performance conversation with their manager. Interviewers grade: decisiveness without steamrolling, and seeing the status dynamics underneath.",
+      "difficulty_rationale": "Expert people-navigation entangled with technical judgment — a classic staff panel scenario.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["people", "decision-making", "behavioral"] }
+    },
+    {
+      "id": "capacity-headroom",
+      "type": "mc",
+      "topic": "Scaling",
+      "prompt": "Traffic doubles every 6 months. Your P99 latency is fine today. What is the expert-level operational posture?",
+      "options": [
+        "Load-test to find each component's saturation point, project when growth hits it, and schedule scaling work to land ahead of the wall — with utilization alerts tied to those projections",
+        "Wait until latency degrades, then scale — anything else is premature optimization",
+        "Immediately re-architect everything for 100x scale",
+        "Double all instance counts every 6 months automatically"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Neither reactive firefighting nor speculative 100x rebuilds: measure the actual ceilings (load tests per component — DB connections, queue throughput, hot partitions rarely fail gracefully or linearly), overlay the growth curve, and buy headroom where the projection crosses the ceiling within your planning horizon. Some walls need architecture (sharding a DB takes quarters — start early); some need config (connection pools). Watch for non-linear failure modes: systems degrade in cliffs, not slopes. This 'scaling runway' framing — time-to-wall per component — is the staff-level answer.",
+      "difficulty_rationale": "Forward-looking capacity engineering vs the two naive extremes.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["scaling", "operations", "planning"] }
+    },
+    {
+      "id": "ai-tooling-team-policy",
+      "type": "flashcard",
+      "topic": "Engineering with AI",
+      "prompt": "As tech lead in 2026, define your team's policy for AI-assisted development (agentic tools like Claude Code): where it accelerates, where it bites, and what guardrails you institute.",
+      "answer_notes": "Accelerates: boilerplate and migrations, test authoring, exploring unfamiliar code, first-draft implementations, and mechanical refactors — treat the agent like a very fast pair who needs review. Bites: subtly wrong code that looks right (the review bottleneck moves to verification), architectural decisions made implicitly by the tool, skill atrophy in juniors who never struggle, and security/licensing of generated code. Guardrails: human review stays mandatory with authorship accountability ('you ship it, you own it'); agent-generated changes need the same tests/CI gates as human code, and non-trivial changes need the author to explain the diff (no rubber-stamping what you can't explain); shared prompt/config conventions (CLAUDE.md-style repo instructions) so the tool follows team standards; secrets and sensitive-data hygiene in what tools may access; and measure outcomes (defect rates, review latency) rather than assuming. The differentiator answer treats it as a workflow-design question, not a yes/no ideology.",
+      "difficulty_rationale": "2026 leadership reality; increasingly a make-or-break interview topic for leads.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["ai-tooling", "culture", "quality"] }
+    }
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "id": "ai-engineer-l1",
+  "title": "AI Engineer — Level 1: Foundations",
+  "track": "ai-engineer",
+  "level": 1,
+  "description": "Core concepts every AI engineer must answer without hesitation: transformers, embeddings, prompting, basic evaluation.",
+  "questions": [
+    {
+      "id": "attention-purpose",
+      "type": "mc",
+      "topic": "Transformers",
+      "prompt": "In a transformer, what does the self-attention mechanism fundamentally compute?",
+      "options": [
+        "A weighted mix of all token representations, where weights reflect how relevant each token is to the current one",
+        "A fixed positional ordering of the tokens in the sequence",
+        "The probability of the next token directly from the embedding table",
+        "A compression of the sequence into a single fixed-size vector"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Self-attention scores every token pair (via query·key dot products), softmaxes those scores, and uses them to build a weighted sum of value vectors. Each token's new representation is therefore a context-aware mixture of the whole sequence. Interviewers expect you to mention Q/K/V and the softmax over scaled dot products.",
+      "difficulty_rationale": "Definitional question asked at the start of almost every LLM interview.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["attention", "transformers"] }
+    },
+    {
+      "id": "embeddings-what",
+      "type": "mc",
+      "topic": "Embeddings",
+      "prompt": "What is a text embedding?",
+      "options": [
+        "A dense numeric vector representing the meaning of text, such that similar texts are close in vector space",
+        "A compressed ZIP of the text for cheaper storage",
+        "The tokenized form of the text as integer IDs",
+        "A hash that uniquely identifies the text"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Embeddings map text into a high-dimensional vector space where semantic similarity becomes geometric proximity (cosine similarity / dot product). They power search, RAG retrieval, clustering, deduplication, and recommendation. Token IDs are not embeddings — the embedding is the learned dense vector.",
+      "difficulty_rationale": "Foundational vocabulary; a wrong answer here ends the interview.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["embeddings", "retrieval"] }
+    },
+    {
+      "id": "temperature",
+      "type": "mc",
+      "topic": "LLM inference",
+      "prompt": "What does the temperature parameter control during LLM sampling?",
+      "options": [
+        "How much the next-token probability distribution is flattened or sharpened before sampling",
+        "The maximum number of tokens the model may generate",
+        "How much GPU memory the model can use",
+        "The size of the context window"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Logits are divided by the temperature before softmax. T→0 approaches greedy decoding (deterministic, picks the argmax); higher T flattens the distribution, increasing diversity and the risk of incoherence. Mention that T=0 is standard for extraction/structured tasks and higher T for creative tasks.",
+      "difficulty_rationale": "Basic sampling knowledge used daily when calling model APIs.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["inference", "sampling"] }
+    },
+    {
+      "id": "rag-definition",
+      "type": "flashcard",
+      "topic": "RAG",
+      "prompt": "Explain Retrieval-Augmented Generation (RAG) to an interviewer in under a minute: what it is, why it's used, and its main components.",
+      "answer_notes": "RAG grounds an LLM's answers in external knowledge: at query time you retrieve relevant documents (usually via embedding similarity search in a vector store), inject them into the prompt as context, and have the model answer from that context. Why: fresh/private knowledge without retraining, smaller hallucination risk, citable sources, cheaper than fine-tuning. Components: document ingestion + chunking, embedding model, vector database/index, retriever (often hybrid keyword+vector with re-ranking), and the generation prompt template. Bonus points: mention evaluation (groundedness, retrieval recall).",
+      "difficulty_rationale": "The single most common question in AI engineer screens since 2023.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["rag", "retrieval"] }
+    },
+    {
+      "id": "context-window",
+      "type": "mc",
+      "topic": "LLM inference",
+      "prompt": "A model has a 200k-token context window. What does this limit?",
+      "options": [
+        "The total tokens (input prompt + generated output) the model can attend over in one request",
+        "Only the length of the generated answer",
+        "The number of requests per minute you can send",
+        "The size of the training dataset"
+      ],
+      "correct_index": 0,
+      "answer_notes": "The context window bounds everything the model attends to: system prompt, conversation history, retrieved documents, tool results, and the tokens it generates. Practical consequences: prompt budgeting, truncation/summarization strategies for long conversations, and why RAG chunking matters.",
+      "difficulty_rationale": "Basic operational fact that shapes every application design.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["inference", "context-management"] }
+    },
+    {
+      "id": "hallucination-basic",
+      "type": "flashcard",
+      "topic": "Hallucination",
+      "prompt": "What is hallucination in LLMs, and name three practical mitigations you would apply in a production app.",
+      "answer_notes": "Hallucination = the model producing fluent but false or unsupported content, because it generates plausible token sequences rather than verified facts. Mitigations: (1) ground answers with RAG and instruct the model to answer only from provided context, saying 'I don't know' otherwise; (2) lower temperature and require citations to retrieved sources; (3) add verification layers — self-consistency checks, a second-pass judge model, or programmatic validation of extractable claims. Also: constrain output with schemas/tool calls where possible.",
+      "difficulty_rationale": "Standard screening question; the mitigations show production experience.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["hallucination", "reliability"] }
+    },
+    {
+      "id": "pretrain-vs-finetune",
+      "type": "mc",
+      "topic": "Training paradigms",
+      "prompt": "Which statement best describes the relationship between pre-training and fine-tuning?",
+      "options": [
+        "Pre-training learns general language ability from massive corpora; fine-tuning adapts that base model to a narrower task or behavior with far less data",
+        "Fine-tuning must always be done before pre-training",
+        "Pre-training uses labeled data; fine-tuning uses only unlabeled data",
+        "They are two names for the same process"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Pre-training is self-supervised next-token prediction over huge corpora, producing a general base model. Fine-tuning (SFT, and preference tuning like RLHF/DPO afterwards) adapts it with orders of magnitude less, usually labeled, data. Expect the follow-up: 'When would you fine-tune instead of prompt-engineer?' — answer: consistent style/format at scale, domain vocabulary, latency/cost via smaller specialized models.",
+      "difficulty_rationale": "Basic training-pipeline literacy.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["fine-tuning", "training"] }
+    },
+    {
+      "id": "tokenization-why",
+      "type": "mc",
+      "topic": "Tokenization",
+      "prompt": "Why do LLMs use subword tokenization (e.g. BPE) instead of whole words or single characters?",
+      "options": [
+        "It balances vocabulary size and sequence length while handling rare/unseen words gracefully",
+        "It guarantees every language uses exactly the same number of tokens",
+        "It encrypts the input for privacy",
+        "Whole-word tokenization is impossible to implement"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Character-level makes sequences very long (expensive attention); word-level explodes vocabulary and fails on unseen words. Subword schemes (BPE, WordPiece, unigram) keep vocabularies ~30k-200k, decompose rare words into known pieces, and keep sequences reasonably short. Practical relevance: costs are billed per token, and tokenization explains oddities like arithmetic and string-reversal weaknesses.",
+      "difficulty_rationale": "Basic but distinguishes people who understand the stack from API-only users.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["tokenization", "transformers"] }
+    }
+  ]
+}

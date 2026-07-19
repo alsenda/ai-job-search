@@ -1,0 +1,381 @@
+/* ---------------------------------------------------------------------------
+   Layout & theme
+--------------------------------------------------------------------------- */
+
+:root {
+  --bg: #0f1220;
+  --surface: #1a1e33;
+  --surface-2: #232849;
+  --text: #e8eaf6;
+  --text-dim: #9aa0c3;
+  --accent: #7c6cff;
+  --accent-soft: rgba(124, 108, 255, 0.18);
+  --good: #34c98e;
+  --bad: #ff6b81;
+  --warn: #f5b759;
+  --radius: 14px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: radial-gradient(1200px 600px at 80% -10%, #232456 0%, var(--bg) 55%);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.15rem;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.topbar nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  margin-left: 1.25rem;
+}
+
+.topbar nav a:hover {
+  color: var(--text);
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1.25rem 4rem;
+}
+
+h1 {
+  font-size: 1.6rem;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  padding: 0.6rem 1.1rem;
+  background: var(--accent);
+  color: white;
+  transition: transform 0.1s ease, filter 0.15s ease;
+}
+
+button:hover:enabled {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+button.ghost {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.error-banner {
+  background: rgba(255, 107, 129, 0.12);
+  border: 1px solid var(--bad);
+  color: var(--text);
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin: 1rem 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Dashboard
+--------------------------------------------------------------------------- */
+
+.track-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.track-panel h2 {
+  margin: 0 0 0.75rem;
+  text-transform: capitalize;
+  font-size: 1.2rem;
+}
+
+.levels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.level-chip {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border: 1px solid transparent;
+}
+
+.level-chip.unlocked {
+  border-color: var(--accent-soft);
+}
+
+.level-chip.locked {
+  opacity: 0.55;
+}
+
+.level-chip .level-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.level-chip .level-meta {
+  color: var(--text-dim);
+  font-size: 0.78rem;
+}
+
+.level-chip .passed {
+  color: var(--good);
+}
+
+.meter {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.meter > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.track-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.topics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.topics h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.topics ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.topics li {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Quiz card (3D flip)
+--------------------------------------------------------------------------- */
+
+.quiz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1rem 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--accent-soft);
+  color: var(--text);
+  margin-right: 0.4rem;
+}
+
+.tag.typicality-staple {
+  background: rgba(52, 201, 142, 0.2);
+}
+
+.tag.typicality-curveball {
+  background: rgba(245, 183, 89, 0.2);
+}
+
+.card-scene {
+  perspective: 1400px;
+  margin: 0 auto;
+  max-width: 720px;
+}
+
+.card {
+  position: relative;
+  width: 100%;
+  min-height: 380px;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4, 0.1, 0.2, 1);
+}
+
+.card.flipped {
+  transform: rotateY(180deg);
+}
+
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.card-face.back {
+  transform: rotateY(180deg);
+  background: var(--surface-2);
+}
+
+.prompt {
+  font-size: 1.15rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+
+.options button {
+  background: var(--surface-2);
+  color: var(--text);
+  text-align: left;
+  line-height: 1.4;
+}
+
+.verdict {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.verdict.good {
+  color: var(--good);
+}
+
+.verdict.bad {
+  color: var(--bad);
+}
+
+.answer-notes {
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.rationale {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.card-actions {
+  margin-top: auto;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.rating-buttons button.nailed {
+  background: var(--good);
+}
+
+.rating-buttons button.partial {
+  background: var(--warn);
+  color: #222;
+}
+
+.rating-buttons button.missed {
+  background: var(--bad);
+}
+
+/* ---------------------------------------------------------------------------
+   Session summary & import view
+--------------------------------------------------------------------------- */
+
+.summary-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.5rem 2rem;
+}
+
+.summary-score {
+  font-size: 2.4rem;
+  font-weight: 700;
+}
+
+.summary-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  color: var(--text-dim);
+  font-size: 0.9rem;
+}
+
+.summary-list li {
+  padding: 0.3rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+textarea.import-box {
+  width: 100%;
+  min-height: 320px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--surface-2);
+  border-radius: var(--radius);
+  padding: 1rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.hint {
+  color: var(--text-dim);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}

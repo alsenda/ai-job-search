@@ -1,0 +1,95 @@
+{
+  "id": "tech-lead-l3",
+  "title": "Tech Lead — Level 3: Advanced Leadership & Design",
+  "track": "tech-lead",
+  "level": 3,
+  "description": "System design under constraints, migrations, cross-team dynamics, hard people scenarios, and decision records.",
+  "questions": [
+    {
+      "id": "url-shortener-design",
+      "type": "flashcard",
+      "topic": "System design",
+      "prompt": "Classic interview: design a URL shortener for 100M new links/month and 10B redirects/month. Hit the points a strong candidate must cover in 10 minutes.",
+      "answer_notes": "Clarify requirements first (custom aliases? TTL? analytics? latency SLO?). Scale math out loud: ~40 new links/sec, ~4k redirects/sec — read-heavy 100:1. Key generation: pre-generated key pool or base62 of a counter (discuss predictability vs coordination; hashing with collision retry as alternative). Storage: simple KV mapping (shortKey → URL, owner, expiry) — fits any store; size ~100M×500B/month ≈ trivial. Reads: cache hot keys (Zipfian distribution) in Redis/CDN edge, 301 vs 302 trade-off (cacheability vs analytics). Writes: single region fine; discuss multi-region only if asked. Analytics: async event stream, never on the redirect critical path. Close with failure modes: cache stampede, key exhaustion, abuse/malware scanning. Interviewers grade the *process*: requirements → math → data model → bottlenecks → trade-offs stated explicitly.",
+      "difficulty_rationale": "The canonical system-design warm-up; fluency is mandatory at senior level.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["system-design", "scaling", "caching"] }
+    },
+    {
+      "id": "strangler-migration",
+      "type": "flashcard",
+      "topic": "Migrations",
+      "prompt": "You inherit a business-critical legacy system that must be replaced without a big-bang rewrite. Describe the strangler-fig approach and the two hardest operational problems in such migrations.",
+      "answer_notes": "Strangler fig: put a routing facade in front of the legacy system, then move capabilities to the new system one slice at a time, routing each migrated slice to the new path while the rest stays legacy — always shippable, reversible per slice, value delivered continuously. Prioritize slices by risk/value; run shadow traffic or dual-write with comparison before cutover. Hardest problems: (1) data synchronization during the overlap — dual-writes with reconciliation jobs, or CDC pipelines, plus a clear source-of-truth per entity at every phase; (2) the long tail — the last 20% (weird integrations, forgotten batch jobs) takes longest, and orgs lose patience; guard against the 'permanent hybrid' by making decommissioning milestones first-class commitments. Also mention: freezing feature work on legacy where possible, and measuring parity with production comparisons, not hope.",
+      "difficulty_rationale": "Real staff-level migration judgment; asked wherever legacy exists (everywhere).",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["migrations", "architecture", "risk"] }
+    },
+    {
+      "id": "underperformer",
+      "type": "flashcard",
+      "topic": "People scenarios",
+      "prompt": "A previously strong senior engineer has been visibly disengaged for two months and it's affecting delivery. As tech lead (not their manager), what do you do?",
+      "answer_notes": "Start with a private, human conversation — curiosity, not accusation: 'You seem less engaged lately; is something going on?' Causes vary wildly (burnout, personal issues, boredom, conflict, job hunting) and prescriptions differ. Within your lane: re-engage them with meaningful technical challenges, pair them into decisions, remove friction you control. Coordinate with their EM early — performance and personal matters are the manager's lane; your job is signal and support, not discipline. Keep the team shielded (redistribute critical-path risk quietly, without public shaming). Interviewers check: do you talk to the person before talking about them, do you respect the lead/EM boundary, and do you protect both the individual's dignity and the team's delivery.",
+      "difficulty_rationale": "Hard people scenario probing role boundaries and empathy.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["people", "behavioral", "collaboration"] }
+    },
+    {
+      "id": "adr-decisions",
+      "type": "mc",
+      "topic": "Decision-making",
+      "prompt": "What is the main value of Architecture Decision Records (ADRs) over deciding in meetings and chat threads?",
+      "options": [
+        "They preserve the context, options considered, and trade-offs of a decision, so future engineers can distinguish 'deliberate choice' from 'accident' — and revisit when the context changes",
+        "They legally protect the company from vendor lawsuits",
+        "They eliminate the need for design discussions",
+        "They ensure decisions can never be changed once written"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Six months later, nobody remembers why Kafka lost to SQS — the ADR does: context, options, decision, consequences, in a few hundred words next to the code. This prevents re-litigating settled questions, onboards newcomers into the 'why', and makes reversal principled (the context assumptions are written down; when they break, revisit). Keep them lightweight or they die. Complementary practice: a decision log with an explicit decider avoids consensus paralysis.",
+      "difficulty_rationale": "Process maturity signal for leads driving decisions across engineers.",
+      "tags": { "difficulty": "advanced", "typicality": "occasional", "topics": ["decision-making", "documentation", "architecture"] }
+    },
+    {
+      "id": "cross-team-dependency",
+      "type": "flashcard",
+      "topic": "Cross-team dynamics",
+      "prompt": "Your critical feature is blocked on another team's API change; their roadmap says next quarter. Walk through your escalation ladder and the alternatives you evaluate in parallel.",
+      "answer_notes": "First, sell don't demand: bring them the business context and the cost of delay in their currency — maybe it rises on their roadmap by itself. Parallel-path immediately: can you build behind an adapter against the current API, mock/stub for now, contribute the change yourself under their review (internal open-source model — often the unlock), or descope to avoid the dependency? Escalate cleanly if needed: joint framing to both teams' leadership as a prioritization question with a cost/benefit, never as a complaint about people. And protect the schedule honestly: re-plan visibly the moment the dependency is at risk, not the week it's due. Interviewers grade: influence-before-escalation, creative de-risking, and transparent communication.",
+      "difficulty_rationale": "Organizational navigation — a defining senior-lead skill.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["stakeholders", "collaboration", "planning"] }
+    },
+    {
+      "id": "idempotency-distributed",
+      "type": "mc",
+      "topic": "Distributed systems",
+      "prompt": "Your payment service retries failed requests. What property must the charge endpoint have, and how is it typically implemented?",
+      "options": [
+        "Idempotency — client-generated idempotency keys stored with the operation result, so retries return the original outcome instead of charging twice",
+        "High throughput — retries just need to be fast",
+        "Encryption — TLS prevents duplicate charges",
+        "Strong typing — a typed API cannot process a request twice"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Networks fail after the server processed but before the client heard — retries then repeat the operation unless it's idempotent. Implementation: client sends a unique idempotency key; server atomically records key→result (with TTL) and returns the stored result on duplicates; the check-and-store must itself be atomic (unique constraint / conditional write) to survive concurrent retries. Generalizes to exactly-once-effect semantics in queues and webhooks: at-least-once delivery + idempotent consumers. This question is a distributed-systems shibboleth — fumbling it is disqualifying at senior level.",
+      "difficulty_rationale": "Core distributed-systems correctness, phrased as the classic payment scenario.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["distributed-systems", "reliability", "api-design"] }
+    },
+    {
+      "id": "postmortem-culture",
+      "type": "flashcard",
+      "topic": "Incident handling",
+      "prompt": "Run a postmortem for an outage caused by an engineer's untested config change. How do you keep it blameless AND still produce real change?",
+      "answer_notes": "Blameless ≠ consequence-free; it means analyzing the system that allowed the mistake, because 'be more careful' fixes nothing. Facilitate: timeline from evidence; ask 'what made this action reasonable at the time?' — the engineer believed the change was safe; why? (No staging parity? No config validation? Culture of urgency?) Extract contributing factors, not a single root cause. Actions must be systemic and owned with due dates: config linting in CI, canary for config, guardrail alerts — not 'remediation theater' of 20 unowned tickets. Follow through in the next weeks or the culture learns postmortems are performative. If the same person repeats reckless patterns despite good systems, that becomes a private management conversation — outside the postmortem.",
+      "difficulty_rationale": "Tests whether 'blameless' is understood as engineering, not slogan.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["incidents", "culture", "operations"] }
+    },
+    {
+      "id": "build-vs-buy",
+      "type": "flashcard",
+      "topic": "Strategy",
+      "prompt": "The team wants to build an internal feature-flag system; LaunchDarkly-style vendors exist. Walk through a rigorous build-vs-buy analysis and where engineers systematically bias it.",
+      "answer_notes": "Frame in total cost of ownership: build cost is not v1 — it's maintenance, on-call, docs, security, and the roadmap of asks that follow, forever, in headcount you could aim at product. Buy costs: license fees, integration, vendor lock-in, data/compliance exposure, and the gap between your needs and their roadmap. Decision hinges on differentiation: build only what's core to your competitive advantage or where requirements are genuinely unserved (verify by piloting vendors, not by assumption). Engineer biases to name explicitly: underestimating maintenance (the 'weekend project' fallacy), overestimating requirement uniqueness, and resume-driven building. Strong answer includes an exit strategy either way: abstraction layer to swap vendors, or a kill criterion for the internal tool.",
+      "difficulty_rationale": "Classic lead-level economics question; interviewers listen for TCO and bias awareness.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["strategy", "build-vs-buy", "trade-offs"] }
+    }
+  ]
+}

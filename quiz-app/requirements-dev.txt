@@ -1,0 +1,7 @@
+# Local development and tooling (not installed on Vercel).
+uvicorn==0.34.0
+pytest==8.3.4
+httpx==0.28.1          # FastAPI TestClient transport
+ruff==0.8.4
+mypy==1.14.0
+anthropic==0.42.0      # used only by scripts/generate_questions.py

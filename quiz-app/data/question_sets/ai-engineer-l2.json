@@ -1,0 +1,118 @@
+{
+  "id": "ai-engineer-l2",
+  "title": "AI Engineer — Level 2: Applied Building Blocks",
+  "track": "ai-engineer",
+  "level": 2,
+  "description": "Chunking, prompting technique, structured output, evaluation basics, and the first layer of agent/tool-use knowledge.",
+  "questions": [
+    {
+      "id": "chunking-tradeoffs",
+      "type": "flashcard",
+      "topic": "RAG",
+      "prompt": "How do you choose a chunking strategy for a RAG pipeline? Discuss chunk size trade-offs and at least two strategies beyond fixed-size splitting.",
+      "answer_notes": "Small chunks → precise retrieval but fragmented context; large chunks → more context but diluted embeddings and wasted prompt budget. Beyond fixed-size: structure-aware splitting (headings, paragraphs, code blocks), semantic chunking (split at embedding-similarity breakpoints), sentence-window retrieval (embed small, return with neighbors), and parent-document retrieval (match small child chunks, feed the larger parent). Always mention: overlap to avoid cutting ideas, and that the right answer is measured with retrieval evals, not guessed.",
+      "difficulty_rationale": "Applied RAG question that expects trade-off reasoning, not definitions.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["rag", "chunking"] }
+    },
+    {
+      "id": "few-shot-vs-zero",
+      "type": "mc",
+      "topic": "Prompt engineering",
+      "prompt": "When does few-shot prompting most clearly beat zero-shot instructions?",
+      "options": [
+        "When the task has a specific output format or subtle labeling convention that is easier to demonstrate than describe",
+        "When the model's context window is nearly full",
+        "When you want maximum output diversity",
+        "Few-shot is always worse than fine-tuning, so never"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Examples communicate format, edge-case handling, and label boundaries that prose instructions describe poorly (classification conventions, extraction schemas, tone). Costs: prompt tokens and potential example bias — examples should cover the class distribution and edge cases. Zero-shot with a strong instruction often suffices for common tasks on frontier models.",
+      "difficulty_rationale": "Requires practical judgment about when a technique pays off.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["prompting"] }
+    },
+    {
+      "id": "structured-output",
+      "type": "flashcard",
+      "topic": "Structured output",
+      "prompt": "Your product needs the LLM to return strictly valid JSON matching a schema. What techniques do you use, and how do you handle failures?",
+      "answer_notes": "Techniques, in increasing strength: (1) explicit schema + example in the prompt; (2) native structured-output / JSON mode or tool-calling with a JSON Schema, letting the API constrain generation; (3) constrained decoding (grammars) when self-hosting. Handle failures: validate with a real parser (e.g. Pydantic/Zod), on failure retry with the validation error fed back, cap retries, and log failures for eval. Never regex-parse free text when the API offers tool/structured output. Mention temperature 0 and 'no prose, JSON only' instructions as hygiene.",
+      "difficulty_rationale": "Every production LLM integration hits this; interviewers probe for the retry-with-error pattern.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["structured-output", "tool-use", "reliability"] }
+    },
+    {
+      "id": "eval-metrics-basic",
+      "type": "mc",
+      "topic": "Evaluation",
+      "prompt": "You built a RAG QA system. Which pair of metrics most directly separates retrieval failures from generation failures?",
+      "options": [
+        "Retrieval recall@k for the retriever, and groundedness/faithfulness of the answer given the retrieved context",
+        "GPU utilization and tokens per second",
+        "BLEU score and perplexity of the final answer",
+        "Click-through rate and daily active users"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Debugging RAG requires decomposition: did the right passage get retrieved (recall@k / hit rate / MRR against a labeled set), and did the model answer faithfully from what it was given (groundedness, judged by humans or an LLM judge)? End-to-end answer correctness alone can't tell you which stage to fix. BLEU/perplexity are poor fits for QA quality.",
+      "difficulty_rationale": "Tests whether the candidate debugs pipelines systematically.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["evals", "rag"] }
+    },
+    {
+      "id": "tool-use-loop",
+      "type": "flashcard",
+      "topic": "Agents & tool use",
+      "prompt": "Walk through the tool-use (function-calling) loop between an application and an LLM. What does the application do at each step?",
+      "answer_notes": "1) App sends the conversation plus tool definitions (name, description, JSON Schema parameters). 2) Model responds either with text or a tool-call request (tool name + arguments). 3) App validates the arguments, executes the real function, and appends the result to the conversation as a tool-result message. 4) Loop back to the model until it produces a final text answer. Key engineering points: the model never executes anything — the app does; argument validation and permissioning matter; results must be truncated/summarized to fit context; parallel tool calls and error results are part of the contract. In agentic coding tools like Claude Code, this same loop runs with file-edit and shell tools.",
+      "difficulty_rationale": "The mechanic behind all agent frameworks; must be explainable from memory.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["tool-use", "agents"] }
+    },
+    {
+      "id": "cosine-vs-dot",
+      "type": "mc",
+      "topic": "Embeddings",
+      "prompt": "Your vector search returns worse results after switching similarity from cosine to raw dot product. What is the most likely explanation?",
+      "options": [
+        "The embeddings are not normalized, so dot product favors longer vectors regardless of semantic similarity",
+        "Dot product cannot be computed on GPU",
+        "Cosine similarity ignores the direction of vectors",
+        "The vector database silently re-embedded the corpus"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Cosine = dot product on L2-normalized vectors. Without normalization, dot product mixes magnitude into the score, and embedding norms often correlate with text length or frequency rather than relevance. Either normalize embeddings (then the two are equivalent) or use the metric the embedding model was trained for — check the model card.",
+      "difficulty_rationale": "Practical debugging scenario over a common gotcha.",
+      "tags": { "difficulty": "intermediate", "typicality": "occasional", "topics": ["embeddings", "retrieval"] }
+    },
+    {
+      "id": "prompt-injection-basic",
+      "type": "flashcard",
+      "topic": "LLM security",
+      "prompt": "What is prompt injection, how does it differ from jailbreaking, and what defenses would you put in an app that summarizes user-uploaded documents?",
+      "answer_notes": "Prompt injection: attacker-controlled data (a document, webpage, email) contains instructions the model mistakenly follows, hijacking the app's task. Jailbreaking: the *user* tries to bypass the model's own safety rules. For a summarizer: treat documents as data — delimit them clearly and instruct the model that content inside is never instructions; strip/flag suspicious imperative content; least-privilege design (summarizer has no tools/secrets to abuse); output filtering; and red-team evals with known injection payloads. Acknowledge honestly: no defense is complete; minimize blast radius.",
+      "difficulty_rationale": "Security awareness is increasingly a screening criterion for AI roles.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["security", "prompt-injection"] }
+    },
+    {
+      "id": "latency-levers",
+      "type": "mc",
+      "topic": "Inference optimization",
+      "prompt": "Users complain your LLM feature feels slow, though total generation time is acceptable. What is usually the highest-impact first fix?",
+      "options": [
+        "Stream tokens to the UI so perceived latency drops to time-to-first-token",
+        "Switch to a larger model with better answers",
+        "Add a spinner animation",
+        "Double the temperature to generate faster"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Streaming changes perceived latency from full-response time to time-to-first-token, usually a 5-20x subjective improvement, with no quality trade-off. Further levers: shorter prompts (prompt caching for static prefixes), smaller/faster model for easy requests (routing), parallelizing independent calls, and caching whole responses for repeated queries. Temperature does not affect speed.",
+      "difficulty_rationale": "Product-minded engineering judgment; a common practical probe.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["inference", "latency", "ux"] }
+    },
+    {
+      "id": "system-prompt-design",
+      "type": "flashcard",
+      "topic": "Prompt engineering",
+      "prompt": "What belongs in a production system prompt, and name three concrete practices that make prompts maintainable in a codebase.",
+      "answer_notes": "Content: role and goal, hard constraints (tone, format, refusal rules), tool-use guidance, output schema, and how to handle uncertainty ('say you don't know'). Maintainability: (1) version prompts like code — files in the repo, reviewed in PRs, not strings scattered inline; (2) template variables with clear delimiters between instructions and injected data; (3) regression evals that run on every prompt change so 'small wording tweaks' can't silently degrade quality. Bonus: prompt caching means keeping the static part stable and putting volatile content last.",
+      "difficulty_rationale": "Separates people who've maintained LLM features from those who've only demoed them.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["prompting", "mlops"] }
+    }
+  ]
+}

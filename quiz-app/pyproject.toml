@@ -1,0 +1,36 @@
+[project]
+name = "interview-quiz-app"
+version = "0.1.0"
+description = "Card-based interview quiz engine: FastAPI backend, TypeScript frontend, level-gated question sets."
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["app", "scripts", "tests", "api"]
+
+[tool.ruff.lint]
+# A practical "best practices" selection:
+# E/W (pycodestyle), F (pyflakes), I (import sorting), B (bugbear: likely bugs),
+# UP (modernize syntax), SIM (simplifications), ANN (type annotations on public code)
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "ANN"]
+ignore = [
+    "ANN401", # dynamically typed *args/**kwargs are fine
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"] # test functions don't need annotations
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency injection idiom uses Depends() in defaults by design.
+extend-immutable-calls = ["fastapi.Depends"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["app"]
+# Pydantic and SQLAlchemy both ship inline types; no plugins required for our usage.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

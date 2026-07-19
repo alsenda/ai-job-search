@@ -1,0 +1,102 @@
+{
+  "id": "ai-engineer-l5",
+  "title": "AI Engineer — Level 5: Ultra Expert",
+  "track": "ai-engineer",
+  "level": 5,
+  "description": "Research-adjacent depth and staff-level judgment: the questions that separate the top few percent in interviews at frontier-adjacent companies.",
+  "questions": [
+    {
+      "id": "moe-systems",
+      "type": "flashcard",
+      "topic": "Model architecture",
+      "prompt": "Mixture-of-Experts models dominate the frontier. Explain how MoE works, why it changes the cost/quality curve, and the systems problems it creates in training and serving.",
+      "answer_notes": "MoE replaces dense FFN blocks with N expert FFNs plus a learned router that activates top-k experts per token — parameters scale without proportional per-token FLOPs (sparse activation), shifting the compute-optimal frontier. Training problems: load balancing (auxiliary losses or loss-free balancing to prevent expert collapse), routing instability, and all-to-all communication across devices for token dispatch — often the dominant cost. Serving problems: total parameters must live in memory even though few activate, making memory-per-token economics unusual; expert parallelism plus batching interact badly at low traffic; latency variance from unbalanced routing. Follow-ups: shared experts, fine-grained experts, expert offloading.",
+      "difficulty_rationale": "Current frontier architecture; ultra-expert candidates must reason about both ML and systems sides.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["transformers", "moe", "serving", "training"] }
+    },
+    {
+      "id": "speculative-decoding",
+      "type": "flashcard",
+      "topic": "Inference optimization",
+      "prompt": "Derive why speculative decoding produces exactly the target model's output distribution, and analyze when it speeds decoding up versus when it doesn't.",
+      "answer_notes": "A cheap draft model proposes k tokens; the target model scores all k in one parallel forward pass. Each draft token is accepted with probability min(1, p_target/p_draft); on rejection, sample from the normalized residual distribution max(0, p_target − p_draft). This rejection-sampling scheme provably yields the target distribution — it is lossless. Speedup ≈ (accepted tokens per target pass) and depends on draft/target agreement and the cost ratio; it helps most in memory-bandwidth-bound decode with an aligned draft model. It fails to help when acceptance is low (mismatched domains), when the batch is large (GPU already saturated, verification competes with throughput), or when draft overhead eats the gains. Variants: self-speculation (Medusa/EAGLE heads), n-gram drafting.",
+      "difficulty_rationale": "Requires actually understanding the math, not just naming the technique.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["inference", "sampling", "serving"] }
+    },
+    {
+      "id": "scaling-laws",
+      "type": "mc",
+      "topic": "Scaling laws",
+      "prompt": "Under Chinchilla-style compute-optimal scaling, a lab doubles its training compute budget. What does the theory prescribe, and why do production labs often deliberately deviate?",
+      "options": [
+        "Scale parameters and training tokens roughly equally (~√2 each); labs deviate by overtraining smaller models on more tokens because inference cost, not training loss, dominates deployment economics",
+        "Put all extra compute into parameters, since bigger models always win",
+        "Put all extra compute into tokens, since data is free",
+        "Halve the model size to leave headroom for RLHF"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Chinchilla showed loss-optimal training scales N (params) and D (tokens) together, roughly N ∝ C^0.5, D ∝ C^0.5 (~20 tokens/param as a rule of thumb). But loss-optimal ≠ deployment-optimal: a smaller model trained far beyond Chinchilla-optimal tokens costs slightly more to train once, then is permanently cheaper and faster at inference — hence heavily overtrained small/mid models. Also know: data constraints, repeated-epoch degradation, and that post-training/RL now consumes a growing compute share.",
+      "difficulty_rationale": "Strategy-level understanding of the economics that shape every model line.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["scaling-laws", "training", "cost"] }
+    },
+    {
+      "id": "long-context-vs-rag",
+      "type": "flashcard",
+      "topic": "RAG",
+      "prompt": "With million-token context windows, is RAG dead? Give the ultra-expert answer: attention limitations, cost asymptotics, and the architecture that actually wins.",
+      "answer_notes": "No. Three arguments: (1) Effective vs nominal context — retrieval quality inside the window degrades (lost-in-the-middle, distractor sensitivity); stuffing 500 documents in-context makes the model do retrieval with attention, which is measurably worse than a dedicated retriever + focused context. (2) Economics: prefill cost scales with context length per query; RAG amortizes indexing once and pays only for relevant tokens per query — at fleet scale the difference is orders of magnitude (prompt caching narrows but doesn't close this for dynamic corpora). (3) Freshness, permissions, and auditability need an external index regardless. The winning architecture is hybrid: retrieval narrows candidates, long context lets you be generous and less chunking-sensitive (whole documents instead of fragments), plus agentic retrieval (the model searches iteratively) for hard queries. The trade dissolves into 'how much context is worth paying for per query'.",
+      "difficulty_rationale": "A deliberately provocative debate question; tests principled reasoning under a false dichotomy.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "common", "topics": ["rag", "context-management", "cost"] }
+    },
+    {
+      "id": "rl-reasoning",
+      "type": "flashcard",
+      "topic": "Alignment training",
+      "prompt": "Explain how reinforcement learning with verifiable rewards (RLVR) produces reasoning models, and discuss reward hacking plus the train-inference compute trade it introduces.",
+      "answer_notes": "RLVR optimizes the policy on tasks with checkable outcomes (math answers, passing tests, compiling code): sample chains of thought, reward verified success, update (GRPO/PPO-style). Long-horizon reasoning behaviors — decomposition, self-checking, backtracking — emerge because they causally increase verified success. Reward hacking: models exploit verifier gaps (hardcoding test cases, formatting tricks, degenerate proofs), so verifier robustness and held-out verification are core engineering. It also creates test-time compute scaling: more thinking tokens buy accuracy, making 'how long to think' a serve-time knob and shifting the old train-vs-inference compute balance. Frontier follow-ups: process vs outcome rewards, CoT faithfulness, and distilling reasoning into cheaper models.",
+      "difficulty_rationale": "The current paradigm behind frontier reasoning models; ultra-expert territory.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["training", "alignment", "reasoning"] }
+    },
+    {
+      "id": "eval-contamination",
+      "type": "mc",
+      "topic": "Evaluation",
+      "prompt": "A vendor model jumps 15 points on a public benchmark between versions. Before celebrating, which explanation must an expert rule out first, and how?",
+      "options": [
+        "Benchmark contamination or targeted overfitting — check with held-out/private variants, perturbed versions of the same items, and contamination probes before trusting the gain",
+        "The GPU drivers were updated, which changes model quality",
+        "The benchmark became easier due to inflation",
+        "Nothing — public benchmark gains always transfer to production"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Public benchmarks leak into training data and vendors optimize for them (directly or via data curation). Verification: private eval sets drawn from your own distribution, paraphrase/perturbation tests (contaminated models are brittle to surface changes), n-gram/embedding contamination checks, and functional variants (same skill, fresh items). The general staff-level principle: public benchmarks are marketing; procurement and routing decisions need private, task-representative evals with statistical rigor (CIs, paired comparisons).",
+      "difficulty_rationale": "Measurement skepticism at the level expected of a model-selection decision maker.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["evals", "benchmarks"] }
+    },
+    {
+      "id": "multi-agent-design",
+      "type": "flashcard",
+      "topic": "Agents & tool use",
+      "prompt": "When do multi-agent architectures genuinely beat a single agent with good tools — and when are they cargo cult? Give principles and a concrete decision rule.",
+      "answer_notes": "Genuine wins: (1) context isolation — subtasks with large working sets (deep research threads, big code explorations) that would blow the parent's context; (2) parallelism across independent subtasks; (3) privilege separation (an untrusted-content reader with no write tools); (4) genuinely different configurations (models, tools, system prompts) per role. Cargo cult: splitting a sequential task into 'planner/coder/reviewer' personas that share all context and run serially — that's one agent with extra latency, token cost, and lossy handoffs. Decision rule: decompose only when subtask context or permissions must differ from the parent, or when parallel wall-clock time matters; otherwise strengthen the single agent (better tools, better prompts). Also mention coordination costs: handoff schemas, result verification, and debugging distributed traces.",
+      "difficulty_rationale": "Cuts through hype with engineering criteria — a differentiator question.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "common", "topics": ["agents", "system-design"] }
+    },
+    {
+      "id": "grounded-decoding",
+      "type": "mc",
+      "topic": "Hallucination",
+      "prompt": "Which claim about eliminating hallucination is technically defensible?",
+      "options": [
+        "It cannot be fully eliminated for open-ended generation, because models optimize likelihood over text rather than truth — but it can be bounded for constrained tasks via retrieval grounding, verification, and calibrated abstention",
+        "Setting temperature to 0 eliminates hallucination",
+        "RAG eliminates hallucination since the model sees real documents",
+        "Larger models will asymptotically stop hallucinating on their own"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Temperature 0 removes sampling randomness, not model error — the argmax can be confidently wrong. RAG reduces but doesn't eliminate: retrieval misses, and models can contradict or over-extrapolate context. Scale improves calibration but next-token training has no truth signal for the long tail; post-training even pressures models toward confident answers. The defensible engineering position: bound the problem per-task — grounding + citation checking, verifiable formats, uncertainty-aware abstention ('I don't know' as a first-class outcome), and human review where stakes demand it. Saying 'we eliminated hallucinations' in an interview is an instant credibility hit.",
+      "difficulty_rationale": "Tests epistemic precision about the field's most-abused claim.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "common", "topics": ["hallucination", "reliability"] }
+    }
+  ]
+}

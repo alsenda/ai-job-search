@@ -1,0 +1,1 @@
+"""Interview quiz application package."""

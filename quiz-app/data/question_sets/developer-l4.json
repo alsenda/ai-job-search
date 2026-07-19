@@ -1,0 +1,102 @@
+{
+  "id": "developer-l4",
+  "title": "Developer — Level 4: Expert Depth",
+  "track": "developer",
+  "level": 4,
+  "description": "Interpreter internals, lock-free thinking, advanced SQL, security engineering, and the hard parts of correctness.",
+  "questions": [
+    {
+      "id": "cpython-object-model",
+      "type": "flashcard",
+      "topic": "Python internals",
+      "prompt": "Explain CPython's object model deeply enough to explain: why is attribute access 'slow', what do __slots__ change, and how do descriptors make properties and methods work?",
+      "answer_notes": "Every object carries a reference-counted PyObject header and (normally) a __dict__ — attribute access is a chain of dict lookups governed by the descriptor protocol: instance attribute lookup checks type.__mro__ for a data descriptor first, then instance __dict__, then non-data descriptors/class attrs. That protocol IS how things work: functions are non-data descriptors whose __get__ binds methods; property is a data descriptor routing to getter/setter; classmethod/staticmethod likewise. 'Slow' = several hash lookups + indirection per access (mitigated by per-opcode inline caches in modern CPython, and adaptive specialization since 3.11). __slots__ replaces the per-instance __dict__ with fixed C-level struct offsets: less memory (no dict per instance), slightly faster access, at the cost of dynamic attributes and some pickling/multiple-inheritance friction. Also worth having: refcounting + cycle collector (gc handles reference cycles), and why `is` vs `==` and small-int/string interning behave as they do.",
+      "difficulty_rationale": "Interpreter-level depth asked at companies that write serious Python.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["python", "internals", "descriptors"] }
+    },
+    {
+      "id": "race-condition-design",
+      "type": "flashcard",
+      "topic": "Concurrency",
+      "prompt": "Design a rate limiter (100 requests/min per API key) that is correct under high concurrency across multiple app servers. Walk through the naive bug, the single-node fix, and the distributed design.",
+      "answer_notes": "Naive bug: read-count-then-increment is a check-then-act race — two concurrent requests both read 99, both pass. Single node: make it atomic (a mutex around the counter, or an atomic increment where the *increment result* decides: `if ++count > limit: reject`). Distributed: state must be shared — Redis with atomic ops: INCR + EXPIRE per window (fixed window; document the boundary-burst artifact: 200 requests straddling a window edge), or a Lua-scripted sliding-window/token-bucket for smoothness (script = atomicity across the read-modify-write). Design decisions to surface: fail-open vs fail-closed when Redis is down (availability vs protection — pick per endpoint sensitivity), local in-memory pre-limiting to shed egregious abuse cheaply, returning 429 + Retry-After, and clock skew irrelevance (use Redis's clock, not app servers'). Expert credit: token bucket vs sliding log trade-offs, and per-key hot-shard behavior at extreme scale.",
+      "difficulty_rationale": "A compact design that exposes atomicity, distributed state, and failure-mode thinking at once.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["concurrency", "distributed-systems", "system-design"] }
+    },
+    {
+      "id": "sql-window-functions",
+      "type": "mc",
+      "topic": "SQL",
+      "prompt": "You need each customer's 3 most recent orders in one query over a large table. Which approach is correct and efficient?",
+      "options": [
+        "A window function: ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY created_at DESC) as rn, wrapped in a subquery filtered to rn <= 3, supported by an index on (customer_id, created_at DESC)",
+        "GROUP BY customer_id LIMIT 3 — GROUP BY supports per-group limits natively",
+        "Fetch all orders into Python and slice per customer",
+        "A correlated subquery with OFFSET per row is the only way"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Window functions compute per-partition values without collapsing rows: ROW_NUMBER ranks within each customer partition; the outer filter keeps the top 3. The composite index lets each partition read pre-sorted. Alternatives worth knowing: LATERAL joins (often fastest for small per-group limits — 'for each customer, run this tiny ordered query'), and DISTINCT ON in Postgres for top-1. Fetching everything into Python fails on memory and network at scale. Interviewers extend into: RANK vs DENSE_RANK vs ROW_NUMBER, running totals with frame clauses, and when a window function beats a self-join.",
+      "difficulty_rationale": "Window-function fluency marks genuinely strong SQL — a reliable expert differentiator.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["sql", "window-functions", "performance"] }
+    },
+    {
+      "id": "security-owasp-deep",
+      "type": "flashcard",
+      "topic": "Security",
+      "prompt": "Threat-model a typical web app's top vulnerabilities beyond 'use parameterized queries': cover authn/authz failures, SSRF, and supply chain — with the engineering controls for each.",
+      "answer_notes": "Broken access control (the #1 real-world class): every object access must check *this user's* right to *this object* (IDOR — /orders/12345 accessible by changing the ID); enforce in one middleware/policy layer, deny by default, and test authorization per endpoint — not per happy path. Authn failures: credential stuffing (rate limits, breached-password checks, MFA), session fixation/rotation on privilege change, password reset token hygiene (single-use, short TTL, no user enumeration). SSRF: any server-side fetch of user-influenced URLs can reach internal metadata endpoints (cloud credentials!) — allowlist destinations, block private ranges at egress, and treat redirects as new URLs. Supply chain: lockfiles + hash pinning, dependency update automation with review, provenance (Sigstore-style) where available, no install-scripts from untrusted packages in CI with secrets. Cross-cutting: secrets in a manager (not env-in-repo), security headers/CSP, audit logging of privileged actions, and abuse-case tests in CI. Expert framing: assets → entry points → trust boundaries, and controls placed at boundaries rather than sprinkled.",
+      "difficulty_rationale": "Security depth expected of senior/lead engineers who own production systems.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["security", "web", "threat-modeling"] }
+    },
+    {
+      "id": "clock-skew",
+      "type": "mc",
+      "topic": "Distributed systems",
+      "prompt": "Two events on different servers have timestamps t1 < t2. What can you validly conclude about their real-world order?",
+      "options": [
+        "Nothing reliable — server clocks skew and jump (NTP corrections), so wall-clock ordering across machines is untrustworthy; use logical clocks (Lamport/vector) or a single sequencer where order matters",
+        "t1 happened before t2, since NTP keeps clocks within microseconds",
+        "t1 happened before t2 if both servers are in the same datacenter",
+        "The events are concurrent by definition"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Clocks drift, NTP steps clocks backwards/forwards, VMs pause — cross-machine wall-clock comparisons at millisecond granularity are fiction. Consequences: last-write-wins by timestamp silently drops writes; distributed traces show children starting 'before' parents; TTL/expiry logic misfires. Correct tools: Lamport clocks give a consistent partial order ('happened-before'), vector clocks detect concurrency, a single writer/sequencer gives total order where feasible, and Spanner-style TrueTime buys bounded uncertainty with hardware. Practical hygiene: durations from monotonic clocks (never wall clock), idempotency instead of timestamp dedupe, and ordering by causality tokens not timestamps. A one-question filter for real distributed-systems scar tissue.",
+      "difficulty_rationale": "Time in distributed systems — the classic expert humility check.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["distributed-systems", "time", "correctness"] }
+    },
+    {
+      "id": "zero-downtime-deploy-code",
+      "type": "flashcard",
+      "topic": "Delivery engineering",
+      "prompt": "During rolling deploys, old and new code versions run simultaneously against the same database and queues. Enumerate the compatibility rules this imposes on every change you ship.",
+      "answer_notes": "The invariant: every deployed artifact must be compatible with N-1 (and rollback means N-1 must tolerate N's data). Rules: (1) DB schema — expand-contract only: add columns nullable/defaulted, never rename/drop in the same release code stops using them; new code must not require what old code doesn't write yet. (2) Message/queue contracts — consumers deploy before producers for new fields; unknown-field tolerance (forward-compatible parsers) always on; never change meaning of an existing field. (3) API between your own services — same producer/consumer discipline; version or feature-flag behavioral changes. (4) Caches and sessions — old code must deserialize new-format entries or keys must be versioned. (5) Feature flags decouple deploy from release and give instant off-switches, but flag debt needs scheduled cleanup. (6) Jobs/crons — double-execution safety during overlap (leases/locks). The meta-rule: 'deploy' is not an event but an interval during which two versions cohabit — review every change against that interval. Rollback-safety is the test: can you roll back at any point without data loss?",
+      "difficulty_rationale": "The discipline that separates engineers who've run continuous deployment from those who've read about it.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["delivery", "migrations", "compatibility"] }
+    },
+    {
+      "id": "cache-coherence-app",
+      "type": "mc",
+      "topic": "Performance",
+      "prompt": "Why can two threads on different CPU cores both see stale values of a shared variable even without any compiler optimization — and what does this imply for writing concurrent code?",
+      "options": [
+        "Each core works on its own cache line copies with relaxed visibility/ordering guarantees; correctness requires synchronization primitives (locks, atomics with memory ordering) rather than assuming writes are instantly visible",
+        "RAM is slower than CPUs, so values take milliseconds to update",
+        "This only happens on ARM; x86 makes all writes instantly visible everywhere",
+        "The OS scheduler batches memory writes until context switch"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Cores buffer stores and cache lines; hardware memory models (even x86's relatively strong TSO, more so ARM's weak model) permit reorderings and delayed visibility. Compilers add their own reordering. Locks and atomics insert the barriers/ordering (acquire/release semantics) that make changes visible and ordered. Implications: 'benign data races' aren't (they're undefined or unspecified behavior in most languages); double-checked locking needs atomics; performance-wise, false sharing (two hot variables on one cache line) silently destroys scalability — pad or separate. In Python this is mostly masked by the GIL today, but free-threaded CPython makes it live; in Go/Java/C++/Rust it's daily reality. The expert takeaway: reason in the language's memory model, never in 'the CPU probably…'.",
+      "difficulty_rationale": "Memory-model literacy — rare, and a strong signal in systems interviews.",
+      "tags": { "difficulty": "expert", "typicality": "curveball", "topics": ["concurrency", "memory-model", "performance"] }
+    },
+    {
+      "id": "observability-design",
+      "type": "flashcard",
+      "topic": "Observability",
+      "prompt": "Design observability for a new payment-adjacent microservice from scratch: signals, cardinality discipline, alerting philosophy, and what most teams get wrong.",
+      "answer_notes": "Three signals with jobs: structured logs (JSON, request/trace IDs, no PII) for forensic detail; metrics (RED: rate, errors, duration per endpoint; plus business-level ones like payment success rate) for trends and alerting; distributed traces for cross-service causality — all correlated via trace IDs (OpenTelemetry as the neutral standard). Cardinality discipline: metrics labels must be bounded sets (endpoint, status class) — user IDs or order IDs in labels melt the metrics store; high-cardinality questions belong to traces/logs. Alerting philosophy: alert on symptoms users feel (SLO burn rates: error rate, latency), not causes (CPU%) — cause-based alerts page at 3am for non-problems and train alert fatigue; every alert must be actionable with a runbook link; review and delete noisy alerts as debt. What teams get wrong: logging everything at INFO and drowning (log levels + sampling for success paths), dashboards nobody looks at instead of a few SLO-centric ones, instrumenting after the incident instead of at build time, and zero business-metric visibility ('the service is green but payments are down 30%'). For payments specifically: an append-only audit trail is a separate, stronger-guarantee concern than logs.",
+      "difficulty_rationale": "Full-system operational design — expert-level because the trade-offs (cardinality, alert fatigue) come only from experience.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["observability", "operations", "system-design"] }
+    }
+  ]
+}

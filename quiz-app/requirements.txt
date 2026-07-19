@@ -1,0 +1,6 @@
+# Runtime dependencies (installed by Vercel's Python builder and for local runs).
+fastapi==0.116.1
+sqlalchemy==2.0.36
+pydantic==2.10.4
+pydantic-settings==2.7.0
+psycopg[binary]==3.2.3

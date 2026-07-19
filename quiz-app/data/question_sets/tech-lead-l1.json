@@ -1,0 +1,109 @@
+{
+  "id": "tech-lead-l1",
+  "title": "Tech Lead — Level 1: Foundations",
+  "track": "tech-lead",
+  "level": 1,
+  "description": "The baseline of technical leadership: role definition, code review, estimation, and basic architecture vocabulary.",
+  "questions": [
+    {
+      "id": "tl-role",
+      "type": "flashcard",
+      "topic": "Leadership basics",
+      "prompt": "\"What does a tech lead actually do?\" — give the crisp interview answer distinguishing the role from senior engineer and engineering manager.",
+      "answer_notes": "A tech lead owns the technical outcome of a team's work: architecture and technical direction, cross-cutting decisions and trade-offs, unblocking others, technical quality (reviews, standards), and translating between product goals and engineering reality. Unlike a senior engineer, individual output is secondary to multiplying the team's output. Unlike an EM, the lever is technical direction, not people management (careers, performance, hiring) — though the roles overlap and vary by company; saying you'd clarify the split in each org is a plus.",
+      "difficulty_rationale": "Opens nearly every tech-lead interview; the answer frames everything after it.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["leadership", "role-definition"] }
+    },
+    {
+      "id": "code-review-purpose",
+      "type": "mc",
+      "topic": "Code review",
+      "prompt": "What is the primary purpose of code review in a healthy team?",
+      "options": [
+        "Sharing knowledge and catching design/correctness issues early — building shared ownership of the codebase",
+        "Proving who the strongest programmer on the team is",
+        "Ensuring every line follows the lead's personal style",
+        "Creating an audit trail to assign blame after incidents"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Reviews catch bugs and design drift cheaply, spread context so no code is single-owner, and teach conventions. A lead should also say what reviews are NOT for: style nitpicks belong to formatters/linters; reviews should be timely (a day, not a week), kind in tone, and proportionate to risk. Trust grows when review effort matches change risk.",
+      "difficulty_rationale": "Basic culture question testing whether the candidate sees reviews as collaboration.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["code-review", "culture"] }
+    },
+    {
+      "id": "estimation-basics",
+      "type": "flashcard",
+      "topic": "Planning",
+      "prompt": "Product asks: \"How long will this feature take?\" Walk through how you produce and communicate an estimate you can stand behind.",
+      "answer_notes": "Decompose into tasks small enough to reason about; estimate ranges, not points in time; add explicit buffers for the unknowns you can name (integration, review, QA, deploy) and state assumptions. Communicate as a range with confidence ('2-3 weeks if the API behaves as documented; the risky part is X, we'll know more after a 1-day spike'). Update the estimate when facts change — early and loudly, never silently. Bonus: distinguish estimate (fact-based) from commitment (negotiated) and offer scope cuts as the lever, not quality.",
+      "difficulty_rationale": "Basic but revealing; interviewers listen for ranges, assumptions, and re-communication.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["planning", "estimation", "communication"] }
+    },
+    {
+      "id": "monolith-vs-services",
+      "type": "mc",
+      "topic": "Architecture",
+      "prompt": "A 6-person startup asks whether to start with microservices. What is the defensible default answer?",
+      "options": [
+        "Start with a well-modularized monolith; split services later only when scaling or organizational pain justifies the operational cost",
+        "Always microservices — they are the modern standard",
+        "Always serverless functions for everything",
+        "Let each developer choose their own architecture per feature"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Microservices buy independent deployment/scaling and team autonomy at the price of distributed-systems complexity: network failure modes, data consistency, observability, CI/CD multiplication. A 6-person team has no org-scaling problem to solve. The mature answer: modular monolith with clean internal boundaries (so future extraction is possible), split only on measured pain — a hot component needing independent scaling, or teams blocking each other.",
+      "difficulty_rationale": "Classic judgment check against resume-driven architecture.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["architecture", "system-design", "trade-offs"] }
+    },
+    {
+      "id": "tech-debt-explain",
+      "type": "flashcard",
+      "topic": "Technical debt",
+      "prompt": "Explain technical debt to a non-technical stakeholder, including why some debt is fine and how you decide what to pay down.",
+      "answer_notes": "Analogy that lands: debt is borrowing speed now at an interest rate paid later — some loans are smart (shipping fast to validate a market), some are payday loans (skipping tests on core billing code). Not all debt is worth paying: prioritize by interest actually paid — code you touch weekly and that causes bugs/slowdowns gets paid down; ugly-but-stable corners don't. Concrete practice: track debt visibly, budget a steady percentage of capacity (not a mythical 'refactoring sprint someday'), and tie paydown items to the features they unblock so the business sees the return.",
+      "difficulty_rationale": "Basic stakeholder-communication staple for lead roles.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["tech-debt", "communication", "prioritization"] }
+    },
+    {
+      "id": "ci-cd-value",
+      "type": "mc",
+      "topic": "Delivery",
+      "prompt": "What is the core reason CI/CD with small, frequent releases beats large scheduled releases?",
+      "options": [
+        "Small changes make failures rare, cheap to diagnose, and fast to roll back — shrinking both risk and feedback time",
+        "It eliminates the need for testing",
+        "It guarantees zero production bugs",
+        "It lets managers see more releases on the dashboard"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Batch size drives risk: a 500-commit release makes any failure a needle-in-haystack; a 5-commit release localizes it. Frequent deploys keep the deploy machinery exercised, enable fast rollback, and shorten user feedback loops. Reference the DORA research linking deploy frequency + lead time with lower change-failure rate. Prerequisites to mention: automated test gates, feature flags to decouple deploy from release, rollback paths.",
+      "difficulty_rationale": "Basic delivery-culture knowledge every lead is expected to articulate.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["ci-cd", "delivery", "devops"] }
+    },
+    {
+      "id": "disagree-commit",
+      "type": "flashcard",
+      "topic": "Collaboration",
+      "prompt": "A teammate strongly disagrees with your technical decision. Walk through how you handle it (a behavioral staple — answer in STAR-ready form).",
+      "answer_notes": "Steps interviewers listen for: genuinely understand their position first (steelman it back to them); separate matters of taste from matters of consequence; look for data or a cheap experiment to decide (prototype, benchmark, time-boxed spike); if it remains judgment, decide explicitly, document the reasoning and revisit-triggers, and ask for disagree-and-commit — offering the same in return when they own decisions. Never: pull rank first, litigate in the group channel, or let it fester unresolved. Have a real story ready: situation, the disagreement, how it resolved, what you learned — including one where you turned out to be wrong.",
+      "difficulty_rationale": "Asked in almost every lead interview, usually behaviorally.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["collaboration", "behavioral", "decision-making"] }
+    },
+    {
+      "id": "definition-of-done",
+      "type": "mc",
+      "topic": "Quality",
+      "prompt": "Which 'definition of done' best reflects professional engineering standards for a user-facing feature?",
+      "options": [
+        "Code reviewed and merged, covered by tests, observable in production (metrics/logs), documented where needed, and verified working in the real environment",
+        "The code compiles on the developer's machine",
+        "The developer says it works and the demo went fine",
+        "The PR is open and someone will look at it eventually"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Done means: shipped, verified, observable, and maintainable by others. Leads should institutionalize this as a checklist so 'done' isn't renegotiated per task. Mention that observability at launch (dashboards, alerts) is part of the feature, not an afterthought — you can't support what you can't see.",
+      "difficulty_rationale": "Basic quality-bar question; weak answers reveal demo-driven engineering.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["quality", "delivery"] }
+    }
+  ]
+}

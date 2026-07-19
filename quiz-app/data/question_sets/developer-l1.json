@@ -1,0 +1,123 @@
+{
+  "id": "developer-l1",
+  "title": "Developer — Level 1: Foundations",
+  "track": "developer",
+  "level": 1,
+  "description": "Python fundamentals, basic data structures, HTTP, git, and SQL — the floor below which no interview proceeds.",
+  "questions": [
+    {
+      "id": "list-vs-dict",
+      "type": "mc",
+      "topic": "Data structures",
+      "prompt": "You need to check whether items exist in a collection millions of times. Why is a Python set/dict dramatically faster than a list?",
+      "options": [
+        "Sets and dicts are hash tables with O(1) average lookup; a list must scan elements one by one, O(n)",
+        "Sets are stored on the GPU",
+        "Lists are always stored on disk",
+        "Sets keep elements sorted, enabling binary search"
+      ],
+      "correct_index": 0,
+      "answer_notes": "`x in my_list` scans linearly; `x in my_set` hashes the element and jumps to a bucket — O(1) average. Millions of membership tests over thousands of items is the difference between milliseconds and minutes. Expect follow-ups: what makes an object hashable (stable __hash__ and __eq__, hence immutable keys), and worst-case O(n) on pathological collisions.",
+      "difficulty_rationale": "The single most common practical data-structure question.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["python", "data-structures", "complexity"] }
+    },
+    {
+      "id": "mutable-default",
+      "type": "mc",
+      "topic": "Python internals",
+      "prompt": "def add_item(item, items=[]): items.append(item); return items — what is wrong with this Python function?",
+      "options": [
+        "The default list is created once at function definition and shared across calls, so items accumulate between unrelated calls",
+        "Nothing — this is idiomatic Python",
+        "Default arguments cannot be lists, so it raises a SyntaxError",
+        "append() returns None so the function always returns None"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Default values are evaluated once, at def time, not per call. Every call without the argument mutates the same list object — a classic source of ghostly bugs. Idiom: default to None and create the list inside (`if items is None: items = []`). This is a favorite screening question because it tests whether you understand Python's evaluation model rather than just syntax.",
+      "difficulty_rationale": "Canonical Python gotcha asked in most screens.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["python", "gotchas"] }
+    },
+    {
+      "id": "http-methods",
+      "type": "mc",
+      "topic": "HTTP & APIs",
+      "prompt": "In a REST API, what is the key property that GET, PUT, and DELETE share but POST does not?",
+      "options": [
+        "Idempotency — repeating the request has the same effect as sending it once",
+        "They are encrypted while POST is not",
+        "They cannot carry a request body under any circumstances",
+        "They bypass authentication"
+      ],
+      "correct_index": 0,
+      "answer_notes": "GET (safe and idempotent), PUT (replace — same result if repeated), DELETE (deleting twice = deleted) are idempotent; POST (create/append) is not — two POSTs make two resources. This matters for retries: proxies and clients may safely retry idempotent methods. Follow-ups: PATCH semantics, status codes (200/201/204/400/401/403/404/409/422/500), and why GET must never mutate state.",
+      "difficulty_rationale": "HTTP semantics floor for any web developer.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["http", "api-design", "rest"] }
+    },
+    {
+      "id": "git-merge-vs-rebase",
+      "type": "flashcard",
+      "topic": "Git",
+      "prompt": "Explain the difference between git merge and git rebase, and when you'd use each.",
+      "answer_notes": "Merge joins two branches with a merge commit, preserving both histories exactly as they happened — safe, non-destructive, the default for integrating into shared branches. Rebase replays your commits on top of the target branch, rewriting them (new hashes) into a linear history — cleaner to read and bisect, ideal for updating a private feature branch before review. Golden rule: never rebase commits that others may have based work on (shared/public history), because rewriting them forks reality. Bonus points: interactive rebase for cleaning a messy branch into logical commits before opening the PR, and knowing your team's convention (merge-commit vs squash vs rebase-merge) matters more than personal preference.",
+      "difficulty_rationale": "Asked constantly; also reveals collaboration habits.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["git", "collaboration"] }
+    },
+    {
+      "id": "sql-join",
+      "type": "mc",
+      "topic": "SQL",
+      "prompt": "orders LEFT JOIN customers ON orders.customer_id = customers.id — what does the LEFT JOIN guarantee?",
+      "options": [
+        "Every order appears in the result, with customer columns NULL where no matching customer exists",
+        "Every customer appears, with order columns NULL where they have no orders",
+        "Only rows where both sides match appear",
+        "The result is the cartesian product of both tables"
+      ],
+      "correct_index": 0,
+      "answer_notes": "LEFT JOIN keeps all rows of the left table (orders), filling NULLs for missing right-side matches. INNER JOIN keeps only matches; RIGHT JOIN mirrors LEFT; FULL OUTER keeps both sides. Classic follow-up: find orders with no customer → LEFT JOIN … WHERE customers.id IS NULL. Also be ready to explain why a WHERE clause on the right table's columns silently turns a LEFT JOIN into an INNER JOIN (NULL rows fail the filter) — a beloved interview trap.",
+      "difficulty_rationale": "Bread-and-butter SQL every developer must answer instantly.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["sql", "databases"] }
+    },
+    {
+      "id": "exceptions-practice",
+      "type": "flashcard",
+      "topic": "Error handling",
+      "prompt": "What does professional error handling look like in a Python service? Cover what to catch, what never to do, and how errors should surface.",
+      "answer_notes": "Catch specific exceptions you can actually handle (retry a TimeoutError, return 404 on NotFound); let the rest propagate to a boundary handler that logs with full context (traceback, request ID) and maps to a clean API error. Never: bare `except:` or `except Exception: pass` (swallowing errors turns crashes into silent corruption), catching to just log-and-reraise at every layer (noise), or using exceptions for normal control flow. Practices: custom exception types per domain error, `raise ... from e` to preserve causal chains, context managers/finally for cleanup, and fail fast on programmer errors (let assertions and TypeErrors crash loudly in development). One log entry per failure, at the boundary, with context — not five copies at five layers.",
+      "difficulty_rationale": "Reveals production maturity more reliably than most algorithm questions.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["python", "error-handling", "reliability"] }
+    },
+    {
+      "id": "big-o-basics",
+      "type": "mc",
+      "topic": "Complexity",
+      "prompt": "A function contains a loop over n items, and inside it performs a dict lookup and appends to a list. What is its time complexity?",
+      "options": [
+        "O(n) — dict lookup and list append are O(1) average, executed n times",
+        "O(n²) — anything nested is quadratic",
+        "O(log n) — dictionaries use binary search",
+        "O(1) — modern computers parallelize loops automatically"
+      ],
+      "correct_index": 0,
+      "answer_notes": "n iterations × O(1) work = O(n). The classic quadratic trap to contrast: using `item in some_list` inside the loop (O(n) each → O(n²)) or repeated string concatenation building an n-char string (O(n²) total; use join). Amortized O(1) for list append is worth mentioning by name. Interviewers often follow with: 'your endpoint got slow at 10k items — what do you look for?' Answer: accidental O(n²) via nested scans, N+1 queries.",
+      "difficulty_rationale": "Baseline complexity reasoning applied to everyday code.",
+      "tags": { "difficulty": "basic", "typicality": "staple", "topics": ["complexity", "python"] }
+    },
+    {
+      "id": "venv-deps",
+      "type": "mc",
+      "topic": "Tooling",
+      "prompt": "Why do Python projects use virtual environments and lock files?",
+      "options": [
+        "To isolate each project's dependencies and pin exact versions, so builds are reproducible across machines and time",
+        "To make Python code run faster",
+        "To encrypt third-party packages",
+        "Because pip refuses to work without them"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Without isolation, projects fight over globally installed package versions; without pinning, `pip install` next month resolves different versions and 'works on my machine' becomes an incident. venv + a lock (pip-tools, poetry/uv lock, or pinned requirements.txt) gives reproducibility; requirements should separate direct from transitive deps. Same principle as package-lock.json in Node. Follow-up: how you upgrade safely — dedicated PR, CI, changelog review.",
+      "difficulty_rationale": "Basic professional hygiene; surprising how many candidates fumble it.",
+      "tags": { "difficulty": "basic", "typicality": "common", "topics": ["tooling", "python", "reproducibility"] }
+    }
+  ]
+}

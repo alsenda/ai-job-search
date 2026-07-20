@@ -3,6 +3,16 @@ name = "interview-quiz-app"
 version = "0.1.0"
 description = "Card-based interview quiz engine: FastAPI backend, TypeScript frontend, level-gated question sets."
 requires-python = ">=3.11"
+# Vercel's Python builder resolves dependencies from this [project] table via uv,
+# not from requirements.txt, whenever pyproject.toml is present — keep these two
+# lists in sync (requirements.txt is what local `pip install -r` uses).
+dependencies = [
+    "fastapi==0.116.1",
+    "sqlalchemy==2.0.36",
+    "pydantic==2.10.4",
+    "pydantic-settings==2.7.0",
+    "psycopg[binary]==3.2.3",
+]
 
 [tool.ruff]
 line-length = 100

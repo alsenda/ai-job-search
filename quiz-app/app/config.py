@@ -5,9 +5,25 @@ development). This is the single place where deployment-specific values live,
 so the rest of the code never touches ``os.environ`` directly.
 """
 
+import os
 from functools import lru_cache
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_database_url() -> str:
+    """A SQLite file with zero setup, on a path that is actually writable.
+
+    Vercel's function bundle is read-only except for ``/tmp``, so the plain
+    working-directory default used in local dev would crash the app on
+    startup there. Vercel sets ``VERCEL=1`` in every build and runtime
+    environment. This is a fallback only — set ``DATABASE_URL`` to a real
+    Postgres connection string for persistence in production.
+    """
+    if os.environ.get("VERCEL"):
+        return "sqlite:////tmp/quiz.db"
+    return "sqlite:///./quiz.db"
 
 
 class Settings(BaseSettings):
@@ -21,7 +37,7 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
 
-    database_url: str = "sqlite:///./quiz.db"
+    database_url: str = Field(default_factory=_default_database_url)
 
     @property
     def sqlalchemy_url(self) -> str:

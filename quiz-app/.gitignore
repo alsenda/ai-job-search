@@ -13,3 +13,4 @@ frontend/dist/
 
 # Vercel
 .vercel/
+.python-version

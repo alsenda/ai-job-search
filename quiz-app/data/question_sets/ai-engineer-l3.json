@@ -1,0 +1,111 @@
+{
+  "id": "ai-engineer-l3",
+  "title": "AI Engineer — Level 3: Production Systems",
+  "track": "ai-engineer",
+  "level": 3,
+  "description": "Advanced RAG, fine-tuning decisions, eval design, agent architectures, and serving fundamentals expected of a senior engineer.",
+  "questions": [
+    {
+      "id": "hybrid-search-rerank",
+      "type": "flashcard",
+      "topic": "RAG",
+      "prompt": "Design the retrieval stage for a RAG system over 2M heterogeneous enterprise documents. Cover hybrid search, re-ranking, and metadata — and justify each component.",
+      "answer_notes": "Hybrid retrieval: BM25/keyword catches exact terms (IDs, error codes, names) that embeddings blur; dense vectors catch paraphrase and semantics; fuse with RRF. First-stage retrieval casts a wide net (top 50-100), then a cross-encoder re-ranker scores query-document pairs jointly for precision in the final top 5-10 — bi-encoders can't model token-level interaction, cross-encoders can but are too slow for the full corpus, hence the two-stage design. Metadata filtering (department, date, ACL) narrows the candidate space and enforces permissions before ranking. Close with evaluation: labeled query set, recall@k per stage, and monitoring drift as documents change.",
+      "difficulty_rationale": "Full retrieval-architecture design with justification, standard senior-level system question.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["rag", "retrieval", "system-design"] }
+    },
+    {
+      "id": "finetune-decision",
+      "type": "flashcard",
+      "topic": "Fine-tuning",
+      "prompt": "A stakeholder demands 'fine-tune a model on our data' to fix quality problems. How do you evaluate whether fine-tuning is actually the right tool, and what alternatives do you rule in or out first?",
+      "answer_notes": "First diagnose the failure: knowledge gaps → RAG (fine-tuning is poor at injecting facts and goes stale); format/style/tone inconsistency → few-shot prompts, then SFT if scale justifies it; capability gaps on hard reasoning → better base model. Fine-tuning wins when: stable, high-volume, narrow task; latency/cost pressure to move to a smaller model; behavior (style, schema adherence) rather than knowledge. Costs people forget: labeled data pipeline, eval harness before/after, re-tuning on every base-model upgrade, hosting/serving the custom model. The senior answer is a decision framework plus 'measure with an eval set first', not a yes/no.",
+      "difficulty_rationale": "Tests judgment and stakeholder pushback, not just technique.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["fine-tuning", "strategy"] }
+    },
+    {
+      "id": "llm-judge-pitfalls",
+      "type": "mc",
+      "topic": "Evaluation",
+      "prompt": "You use an LLM-as-judge to score your chatbot's answers. Which is the most serious methodological risk?",
+      "options": [
+        "The judge has systematic biases (position, verbosity, self-preference) that don't cancel out, so scores drift from human judgment",
+        "The judge model costs slightly more per call than embedding-based metrics",
+        "LLM judges cannot output numeric scores",
+        "Judges only work in English"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Known judge biases: preferring longer answers, preferring the first-listed candidate in pairwise setups, favoring outputs in its own style, and rubric drift. Mitigations: calibrate against a human-labeled subset, randomize positions, use pairwise comparisons with swapped orders, pin judge model versions, and rubric-based scoring with references. An uncalibrated judge quietly optimizes your product toward judge quirks.",
+      "difficulty_rationale": "Advanced eval methodology, expected of anyone running model comparisons.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["evals", "llm-judge"] }
+    },
+    {
+      "id": "agent-architecture",
+      "type": "flashcard",
+      "topic": "Agents & tool use",
+      "prompt": "When do you build a multi-step agent versus a fixed pipeline (chain) for an LLM workflow? Give the trade-offs and one concrete example of each.",
+      "answer_notes": "Fixed pipeline: known, decomposable task with stable steps — e.g. 'summarize ticket → classify → draft reply'. Predictable, testable per-stage, cheap, easy evals. Agent (model chooses actions/tools in a loop): open-ended tasks where the path depends on intermediate findings — e.g. 'debug this failing repo' with Claude Code-style file and shell tools. Costs of agents: compounding error per step, harder evals, unbounded latency/cost, need for guardrails (step limits, permissions, checkpoints). Senior rule of thumb: use the least agency that solves the task; start as a pipeline, add agency only where the branching genuinely lives.",
+      "difficulty_rationale": "Architecture judgment currently asked in most senior AI-engineer interviews.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["agents", "system-design"] }
+    },
+    {
+      "id": "kv-cache",
+      "type": "mc",
+      "topic": "Inference optimization",
+      "prompt": "What does the KV cache in transformer inference store, and what problem does it solve?",
+      "options": [
+        "Keys and values of already-processed tokens per layer, so each new token only computes attention against cached states instead of re-encoding the whole sequence",
+        "The most frequent user queries and their final answers",
+        "Model weights quantized to int8 for memory savings",
+        "Gradients from the last fine-tuning run"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Autoregressive generation would otherwise recompute K/V for the entire prefix at every step (quadratic total work). Caching K/V per layer makes each decode step linear in sequence length. Consequences: KV cache dominates GPU memory for long contexts (hence paged attention, GQA/MQA, quantized caches), and prompt caching across requests exploits shared prefixes. This is the gateway question to serving-infrastructure depth.",
+      "difficulty_rationale": "Core serving internals; separates infra-aware engineers from API users.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["inference", "serving"] }
+    },
+    {
+      "id": "eval-dataset-design",
+      "type": "flashcard",
+      "topic": "Evaluation",
+      "prompt": "You're launching an LLM feature with no existing eval data. Describe how you bootstrap an evaluation suite in the first two weeks and evolve it after launch.",
+      "answer_notes": "Week 1: write 20-50 golden examples by hand from product specs and edge cases (adversarial inputs, ambiguity, refusal cases); define a rubric per axis (correctness, groundedness, format, safety); wire a harness that runs on every prompt/model change (CI). Week 2: expand with synthetic variations (LLM-generated paraphrases, reviewed by humans) and pilot-user transcripts. Post-launch: mine production logs for failures (thumbs-down, retries, escalations), triage weekly into new eval cases — the eval suite becomes a regression test that only grows. Key senior point: evals before optimization; anything unmeasured will silently regress.",
+      "difficulty_rationale": "Process-design question showing how the candidate actually ships quality.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["evals", "mlops"] }
+    },
+    {
+      "id": "lora-mechanics",
+      "type": "mc",
+      "topic": "Fine-tuning",
+      "prompt": "Why does LoRA fine-tuning drastically reduce trainable parameters while preserving quality on most adaptation tasks?",
+      "options": [
+        "Weight updates during adaptation have low intrinsic rank, so learning small low-rank matrices A·B alongside frozen weights captures most of the needed change",
+        "It deletes transformer layers that are unused for the target task",
+        "It trains only the tokenizer vocabulary",
+        "It quantizes the gradients to 4 bits"
+      ],
+      "correct_index": 0,
+      "answer_notes": "LoRA freezes W and learns ΔW = A·B with rank r ≪ d, cutting trainable parameters by ~1000x, enabling adapter swapping and cheap multi-tenant serving. The empirical premise: task adaptation lives in a low-rank subspace. QLoRA combines this with a 4-bit quantized frozen base to fine-tune large models on a single GPU. Know r, alpha, and which modules (attention projections) adapters usually target.",
+      "difficulty_rationale": "Standard PEFT depth-check in senior interviews.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["fine-tuning", "lora"] }
+    },
+    {
+      "id": "cost-optimization",
+      "type": "flashcard",
+      "topic": "LLM economics",
+      "prompt": "Your LLM API bill is $80k/month and growing. Walk through a systematic cost-reduction plan that doesn't tank quality.",
+      "answer_notes": "1) Measure: cost per feature/request, token breakdown (input vs output), and traffic distribution — usually a few endpoints dominate. 2) Prompt diet: trim boilerplate, deduplicate context, cap retrieval chunks; enable prompt caching for static prefixes (system prompts, tool definitions). 3) Model routing: classify request difficulty, send easy/high-volume traffic to smaller models (e.g. Haiku-class), keep frontier models for hard paths; validate per-tier with evals. 4) Response caching for repeated/canonicalizable queries. 5) Batch and async where latency allows (batch APIs are ~50% cheaper). 6) Consider fine-tuning a small model for the one dominant narrow task. Guardrail: every change ships behind the eval suite; report cost per request alongside quality metrics.",
+      "difficulty_rationale": "Business-aware engineering; increasingly a make-or-break senior question.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["cost", "inference", "strategy"] }
+    },
+    {
+      "id": "memory-agents",
+      "type": "flashcard",
+      "topic": "Agents & tool use",
+      "prompt": "How do you give a long-running agent 'memory' beyond its context window? Compare at least three mechanisms and their failure modes.",
+      "answer_notes": "1) Conversation summarization/compaction: periodically compress history into a summary — cheap, but lossy; critical details can vanish. 2) External memory store (vector or structured): agent writes facts/decisions, retrieves them by relevance — scalable, but retrieval misses and stale/contradictory memories corrupt behavior; needs write discipline and TTLs. 3) Structured scratchpads/files (like a plan.md or task list the agent re-reads): explicit, auditable, works well for agentic coding, but the agent must be prompted to maintain it. 4) Episodic checkpoints for resumability. Design point: separate durable facts (store) from working state (scratchpad) from narrative history (summarize); log memory writes for debuggability.",
+      "difficulty_rationale": "Frontier-practical agent engineering, now common in senior interviews.",
+      "tags": { "difficulty": "advanced", "typicality": "occasional", "topics": ["agents", "context-management"] }
+    }
+  ]
+}

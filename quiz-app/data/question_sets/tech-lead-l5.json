@@ -1,0 +1,95 @@
+{
+  "id": "tech-lead-l5",
+  "title": "Tech Lead — Level 5: Ultra Expert",
+  "track": "tech-lead",
+  "level": 5,
+  "description": "Principal-level judgment: consensus internals, org-scale failures, executive communication, and the calls with no good options.",
+  "questions": [
+    {
+      "id": "consensus-raft",
+      "type": "flashcard",
+      "topic": "Distributed systems",
+      "prompt": "Explain how Raft achieves consensus — leader election, log replication, and safety — and why understanding it matters even if you never implement it.",
+      "answer_notes": "Raft: time divides into terms; a leader is elected by majority vote (randomized election timeouts break ties; a candidate needs an up-to-date log to win — the election restriction that guarantees safety). The leader accepts writes, appends to its log, replicates to followers, and commits an entry once a majority has it; committed entries survive any minority failure because any future leader must hold them. Safety property: at most one leader per term, and committed entries never lost. Why it matters: everything you operate sits on consensus — etcd (Kubernetes control plane), ZooKeeper (Kafka's old controller), cloud control planes, distributed databases. Understanding it explains their behaviors: why quorum loss stops writes, why even-node clusters are pointless, why cross-region latency hits write throughput, why split-brain is prevented at the cost of availability. Ultra-expert bonus: contrast with Paxos (equivalent power, harder to understand), and know what fencing tokens fix in distributed locks.",
+      "difficulty_rationale": "Principal-level infrastructure literacy — the depth that anchors credibility.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["distributed-systems", "consensus"] }
+    },
+    {
+      "id": "cancel-project",
+      "type": "flashcard",
+      "topic": "Hard calls",
+      "prompt": "An 18-month platform rewrite you championed is 70% 'done' but the ground has shifted: the old system stabilized and the business pivoted. Sunk cost says finish; walk through how you evaluate and execute a possible cancellation.",
+      "answer_notes": "Evaluate forward-only: ignore the 18 months spent — compare remaining-cost-to-value of finishing vs alternatives (stop now, descope to the 20% that still matters, harvest components). Get the data honestly: remaining work realistically re-estimated (the last 30% is usually 60%), value under the *new* business direction, and the carrying cost of running two systems. If cancellation wins: own it publicly as the champion — 'the context changed, and continuing would spend the team on yesterday's problem' — which builds more credibility than quiet strangulation. Execute with care: salvage reusable components and lessons into an honest writeup, protect the team from 'failed project' stigma (they executed well against the old context; celebrate what's harvested), close cleanly (decommission, docs), and do a no-blame retrospective on the *decision process* — could we have caught the shift earlier with explicit kill criteria? Principal-level signal: you volunteer that big bets should carry pre-agreed reassessment checkpoints from day one.",
+      "difficulty_rationale": "The hardest kind of leadership call: killing your own project against sunk-cost gravity.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["strategy", "decision-making", "behavioral"] }
+    },
+    {
+      "id": "exec-communication",
+      "type": "flashcard",
+      "topic": "Executive communication",
+      "prompt": "You have 5 minutes with the CEO to get approval for a 2-quarter reliability investment that pauses feature work. Script the pitch — structure, framing, and the mistakes engineers make in this room.",
+      "answer_notes": "Structure (answer-first): (1) The ask in one sentence: 'I need two quarters of 30% capacity to cut our outage risk before it costs us customers.' (2) Business framing: incidents cost X hours/quarter and churn-risked accounts Y — trend is worsening; two named near-misses. (3) The plan in three bullets with a measurable exit: change-failure rate and MTTR targets, top-3 incident sources eliminated. (4) The cost of NOT doing it, stated as risk with numbers, not fear. (5) What the business still gets: committed features that survive, and the date feature velocity returns — higher. Mistakes to avoid: technical vocabulary (the CEO hears 'refactoring' as 'engineers polishing'), moralizing ('we've accumulated shameful debt'), open-ended asks with no exit criteria, and bringing a problem without a decision to make. Anticipate the counter-questions: 'why now', 'why not hire more', 'what's the minimum version'. Leave a one-pager. Ultra-expert: you volunteer a checkpoint — 'if the metrics aren't moving by end of Q1, we stop.'",
+      "difficulty_rationale": "Translating engineering into executive decision language — the principal-level gate.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "common", "topics": ["communication", "stakeholders", "strategy"] }
+    },
+    {
+      "id": "multi-region-activeactive",
+      "type": "flashcard",
+      "topic": "System design",
+      "prompt": "The business demands multi-region active-active for a system with strong consistency requirements on core entities. Walk through why this is close to a contradiction, and the realistic architecture options.",
+      "answer_notes": "The physics: strong consistency requires coordination; cross-region coordination pays speed-of-light RTTs (50-150ms+) on the write path — active-active with synchronous global consensus makes every write slow (spanner-style TrueTime narrows but doesn't eliminate this; you pay commit-wait). Realistic options: (1) Partition by home region — each entity has a single writer region (user's data lives near them), global reads eventually consistent; failover moves homes. Most 'active-active' in practice is this. (2) CRDTs/last-write-wins for entities that tolerate merge semantics — carts yes, ledgers no. (3) Split the domain: strongly consistent core stays single-writer-region with fast regional failover (active-passive for writes, active-active for reads); latency-sensitive-but-relaxed data goes global. (4) True global consensus (Spanner/Cockroach) where write latency is acceptable and the operational maturity exists. The ultra-expert move: interrogate the requirement — 'active-active' usually means 'we need an RTO of minutes and good read latency worldwide', which option 3 delivers without the contradiction. Quantify RPO/RTO per data class and design per class, not per slogan.",
+      "difficulty_rationale": "Forces confrontation between business language and physical limits — principal-level design.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["distributed-systems", "system-design", "consistency"] }
+    },
+    {
+      "id": "org-scale-quality",
+      "type": "flashcard",
+      "topic": "Org-scale engineering",
+      "prompt": "You're now responsible for technical quality across 8 teams you don't manage. Command-and-control won't work. How do you actually move quality at that scale?",
+      "answer_notes": "Levers that work without authority: (1) Make the right thing the easy thing — golden paths: paved-road templates, CI presets, scaffolding where quality defaults are built in; teams adopt because it's less work, not because you said so. (2) Measure and mirror — per-team quality signals (change-failure rate, flaky-test count, incident recurrence) visible to the teams themselves; sunlight moves behavior more than mandates. (3) Seed and network — a guild/champions model: one engineer per team who co-owns standards, so standards are 'ours'; RFC processes for cross-team norms. (4) Review leverage points, not everything — you personally engage on the architecture decisions and shared libraries where quality compounds. (5) Executive air cover for the floor — a small set of non-negotiables (security review, rollback capability) blessed from above, everything else advisory. Anti-patterns: standards documents nobody reads, mandatory checklists that become theater, and being the approval bottleneck for 8 teams. The metric of success: quality improves in teams you haven't visited recently.",
+      "difficulty_rationale": "Influence-at-scale without authority — the essence of principal roles.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["leadership", "org-design", "quality"] }
+    },
+    {
+      "id": "queue-theory-tail",
+      "type": "mc",
+      "topic": "Performance",
+      "prompt": "Your service runs at 85% utilization and P99 latency is 8x the median. Management wants P99 halved without more hardware. What does queueing theory say about the cheapest lever?",
+      "options": [
+        "Reduce utilization or variability: latency explodes non-linearly near saturation, so shedding/capping load, smoothing bursts, or cutting service-time variance beats micro-optimizing the median",
+        "Optimize the median further — P99 will follow proportionally",
+        "Add retries so slow requests get a second chance",
+        "Switch to a faster programming language across the board"
+      ],
+      "correct_index": 0,
+      "answer_notes": "M/M/1 intuition: wait time ∝ ρ/(1−ρ) — at 85% utilization the queue multiplier is ~5.7x and each extra point of utilization is superlinearly expensive; dropping to 70% often halves tail latency by itself. Variability is the other axis (Kingman's formula): a few slow request types inflate everyone's queueing delay — isolate them (bulkheads, separate pools), cap their concurrency, or cut their variance. Retries near saturation are gasoline (metastable failure); language rewrites attack the wrong term. Also name: tail amplification in fan-out (P99 of one backend becomes ~P50 of a 100-way fan-out — hedged requests help). This is how principal engineers reason about performance: system dynamics before code.",
+      "difficulty_rationale": "Queueing-theory-grounded tail reasoning — a genuine expert separator.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["performance", "scaling", "queueing-theory"] }
+    },
+    {
+      "id": "acquisition-integration",
+      "type": "flashcard",
+      "topic": "Hard calls",
+      "prompt": "Your company acquires a startup; you must integrate their stack (different cloud, different languages, 12 engineers with strong identity). Lay out your first 90 days as the integrating tech lead.",
+      "answer_notes": "Days 0-30, learn before touching: inventory their systems with their engineers (architecture, ops load, crown-jewel components); identify what's genuinely better than yours — acquisitions fail culturally when the acquirer assumes superiority; find the must-not-break revenue paths and compliance constraints. Days 30-60, decide with them: joint working group produces the integration thesis — what merges, what stays separate, what sunsets, on what timeline; explicit criteria (cost, risk, team capacity), ADR-documented; quick wins first (shared SSO, monitoring, on-call tooling) to build trust; avoid forced rewrites of working systems — interop layers over migrations where value is unclear. Days 60-90, execute visibly: one meaningful integration shipped end-to-end; retention watch on their key engineers (they're being recruited hard right now — give them ownership and visibility, not tickets); communicate the multi-quarter roadmap with honest sequencing. Threads throughout: their engineers hear every plan as 'are we being deleted?' — overcommunicate respect via decisions, not slogans. Success metric: their attrition, not just system milestones.",
+      "difficulty_rationale": "Socio-technical integration under uncertainty — among the hardest lead scenarios that exist.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["org-design", "migrations", "people"] }
+    },
+    {
+      "id": "irreversible-decisions",
+      "type": "mc",
+      "topic": "Decision-making",
+      "prompt": "Which decision-making principle most distinguishes strong senior technical leaders?",
+      "options": [
+        "Classify decisions by reversibility: make reversible ones fast with minimal process, and reserve slow, rigorous analysis for the genuinely one-way doors",
+        "Gather maximum information before every decision, however long it takes",
+        "Delegate all decisions to build team ownership",
+        "Always choose the option with the least short-term risk"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Type 1 (one-way doors: public API contracts, data deletion, core datastore choice, key-personnel moves) deserve deliberate rigor. Type 2 (most decisions: internal designs, tooling, process) are cheap to reverse — decide at ~70% information and iterate; applying Type-1 process to them is organizational sludge, and the asymmetry means speed usually wins. The compounding skill is correctly *classifying*: many decisions that look reversible calcify through adoption (that 'temporary' schema, that 'experimental' API someone built on) — strong leads spot reversibility decay and add just enough process at the calcification point. Uniform caution and uniform speed both fail; calibration is the skill.",
+      "difficulty_rationale": "The meta-skill underneath every other question in this track.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "common", "topics": ["decision-making", "leadership"] }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "id": "developer-l5",
+  "title": "Developer — Level 5: Ultra Expert",
+  "track": "developer",
+  "level": 5,
+  "description": "The deep end: B-tree internals, formal-ish correctness reasoning, allocator behavior, protocol design, and questions that end debates.",
+  "questions": [
+    {
+      "id": "btree-internals",
+      "type": "flashcard",
+      "topic": "Databases",
+      "prompt": "Go below 'indexes are B-trees': explain B+-tree structure, why databases chose it over binary trees and hash tables, what an index page split costs, and how this explains real-world advice like 'prefer sequential primary keys'.",
+      "answer_notes": "B+-trees: high-fanout nodes (hundreds of keys per 8-16KB page) with values only in leaves, leaves linked for range scans. Chosen because the tree is shallow (3-4 levels for billions of rows → 3-4 page reads worst case), matches disk/page granularity, and supports ordered operations (range, prefix, sort-order) that hash indexes can't. Writes: inserting into a full leaf splits it (allocate page, move half the keys, update parent — possibly cascading), and random key insertion (UUIDv4) causes splits everywhere plus cache misses across the whole tree, while sequential keys (autoincrement, UUIDv7) append to the rightmost leaf with warm caches — this is the mechanical reason for the sequential-key advice, and for index bloat after churn (hence REINDEX/optimize). Also connects to: why covering indexes avoid heap lookups (index-only scans), why fillfactor exists, and write amplification vs LSM-tree alternatives (RocksDB-style) that trade read cost for write throughput. The ultra-expert marker is deriving the practical advice from the structure, not reciting either alone.",
+      "difficulty_rationale": "Storage-engine mechanics linked to daily decisions — genuine deep-end material.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["databases", "b-trees", "storage"] }
+    },
+    {
+      "id": "invariants-correctness",
+      "type": "flashcard",
+      "topic": "Correctness",
+      "prompt": "You're reviewing a complex stateful module (say, an order state machine with refunds and partial shipments). Explain how you reason about correctness with invariants, and how that thinking changes the code and tests you demand.",
+      "answer_notes": "Identify the invariants — properties that must hold in every observable state: 'refunded_amount ≤ paid_amount', 'items_shipped + items_cancelled ≤ items_ordered', 'terminal states never transition out'. Then audit every mutation path: which operations could violate each invariant, and what enforces it — ideally the type/data model makes violations unrepresentable (state enums with explicit transition table, non-negative types, database constraints as the last line), rather than scattered if-checks. Concurrency: invariants must hold under interleaving — which mutations must be atomic together (transaction boundaries chosen by invariant scope, not convenience). Tests change too: property-based tests asserting invariants over random operation sequences beat example-based happy paths; illegal-transition tests; and DB constraints tested to actually fire. Code smells this lens exposes: booleans multiplying into unrepresentable-but-reachable states (is_paid + is_refunded + is_shipped = 8 combinations, 3 meaningful), and 'fix-up' code that repairs bad states instead of preventing them. This is lightweight formal thinking — the vocabulary (invariant, precondition, atomicity scope) that distinguishes engineers who prevent bug classes from those who fix instances.",
+      "difficulty_rationale": "Transferable correctness methodology — the thinking behind the top tier of code review.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["correctness", "design", "testing"] }
+    },
+    {
+      "id": "tail-latency-guarantee",
+      "type": "flashcard",
+      "topic": "Performance",
+      "prompt": "An SLA demands P99.9 < 100ms for a request that fans out to 20 backend calls. Do the math on why this is brutal, then design for it.",
+      "answer_notes": "The math: if each backend independently meets 100ms at P99.9, the fan-out sees a miss whenever ANY of 20 misses: P(all fast) = 0.999^20 ≈ 0.980 — your P99.9 target just became P98 behavior; to get P99.9 overall, each backend needs ~P99.995 at 100ms. Tail latency compounds under fan-out. Design responses: (1) cut the fan-out (batch endpoints, denormalized read models); (2) hedged requests — send a duplicate to a second replica after the P95 mark, take the first answer (bounds stragglers at small extra load); (3) partial results with graceful degradation — 18/20 sections render, two show fallbacks, SLA redefined on the critical subset; (4) aggressive per-call timeouts + fallback caches for non-critical calls; (5) isolate the tail sources (GC pauses → different runtime or tuning; cold caches → warming; noisy neighbors → dedicated capacity). And measurement honesty: P99.9 needs enough samples and histogram-based (not averaged) percentiles; per-dependency tail attribution in traces. Reference point: 'The Tail at Scale' (Dean & Barroso). The ultra-expert reflex is doing the multiplication out loud before proposing anything.",
+      "difficulty_rationale": "Quantitative tail reasoning under fan-out — a true staff-level performance question.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["performance", "distributed-systems", "sla"] }
+    },
+    {
+      "id": "python-perf-model",
+      "type": "mc",
+      "topic": "Python internals",
+      "prompt": "Why is a tight Python loop ~50-100x slower than the C equivalent, and which statement about closing that gap is most accurate?",
+      "options": [
+        "Each bytecode op pays interpreter dispatch, boxed objects (every int is a heap PyObject), and dynamic dispatch per operation; close the gap by moving the loop into C-backed vectorized code (numpy), JIT paths (PyPy, Numba), or native extensions — not by micro-tweaking the Python",
+        "Python is slow because it's interpreted line by line from source text each iteration",
+        "The GIL makes single-threaded code 100x slower",
+        "Using while instead of for loops recovers most of the difference"
+      ],
+      "correct_index": 0,
+      "answer_notes": "The costs per operation: fetch-decode-dispatch of bytecode, refcount traffic, heap-boxed numbers (an int add = two unboxings, an allocation), and dynamic lookup of every method/operator. CPython 3.11+'s adaptive specialization and 3.13+'s experimental JIT shave constant factors, but the model stands: performance comes from doing many elements per bytecode (numpy/pandas vectorization — the loop runs in C), JIT-compiled numeric kernels (Numba), a different runtime (PyPy), or Rust/C extensions for hot paths. The GIL is about parallelism, not single-thread speed — conflating them is a red flag. Ultra-expert nuance: know when NOT to bother (I/O-dominated services) and measure the boxed-object memory story (a list of a million ints ≈ 30-40MB+ vs 8MB in C).",
+      "difficulty_rationale": "Tests a correct performance model of the interpreter rather than folklore.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["python", "performance", "internals"] }
+    },
+    {
+      "id": "protocol-design",
+      "type": "flashcard",
+      "topic": "Protocol design",
+      "prompt": "Design the sync protocol for an offline-capable mobile app editing shared documents: conflict model, convergence guarantees, and the trade-offs between OT, CRDTs, and simpler schemes.",
+      "answer_notes": "First force the requirement conversation: what does 'conflict' mean per data type — a todo checkbox (last-writer-wins is fine) vs collaborative text (ordering matters) vs a counter (merge = sum of deltas)? Simple scheme that covers most apps: per-field LWW with hybrid logical clocks + server as arbiter, tombstones for deletes, and explicit conflict surfacing for the few fields where silent merge loses user intent (show both versions). CRDTs: data structures whose merges are commutative/associative/idempotent — convergence guaranteed without coordination (state-based or op-based; text via RGA/Yjs-style sequences); costs: metadata growth (tombstones, IDs per character), complex semantics for cross-object invariants, and 'converged' ≠ 'what the user meant'. OT: transforms concurrent ops against each other (Google-Docs lineage); needs a central server for canonical ordering and is notoriously hard to get correct for rich data models. Cross-cutting: idempotent, resumable sync (client sends op log with IDs since last checkpoint), schema versioning in the protocol from day one, server-side validation (clients lie), and invariants that span objects need server transactions — CRDTs can't express 'seats sold ≤ capacity'. Ultra-expert signal: choosing per-field strategies and naming what each guarantee does NOT cover, instead of evangelizing one acronym.",
+      "difficulty_rationale": "Distributed-data design with sharp guarantee boundaries — deep-end interview material at collaboration/product companies.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["distributed-systems", "crdt", "protocol-design"] }
+    },
+    {
+      "id": "gc-allocator-behavior",
+      "type": "mc",
+      "topic": "Runtime internals",
+      "prompt": "A service's RSS climbs to 8GB under a traffic burst, then traffic drops but RSS stays at 8GB for hours despite the heap profiler showing 500MB live. What is the most likely explanation?",
+      "options": [
+        "The allocator retains freed memory: heap fragmentation and free-list caching mean pages aren't returned to the OS even though the application freed the objects — RSS measures pages held, not live data",
+        "A memory leak — live data must equal RSS",
+        "The kernel is misreporting memory",
+        "Python's GC only runs at midnight"
+      ],
+      "correct_index": 0,
+      "answer_notes": "malloc implementations (glibc ptmalloc arenas, jemalloc, pymalloc pools on top) request pages from the OS and cache freed chunks for reuse; returning memory requires whole free pages/arenas, which fragmentation prevents — one live object can pin a page. High-water-mark behavior is normal: RSS ≈ peak, not current. Distinguish from a true leak by trend (leak grows monotonically with time/requests; retention plateaus at burst peak) and by live-heap profiling. Mitigations when it matters: jemalloc/tcmalloc with decay/background purge tuning, malloc_trim, arena limits (MALLOC_ARENA_MAX in threaded services), object pooling for burst-heavy allocation patterns, worker recycling as pragmatic control, or capacity-planning to the peak. Also know the container consequence: the OOM killer judges RSS, so 'freed but retained' memory is still real for your pod limits. This question separates people who've debugged memory in production containers from everyone else.",
+      "difficulty_rationale": "Allocator-level systems knowledge behind a very confusing real symptom.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["memory", "internals", "operations"] }
+    },
+    {
+      "id": "api-compat-lawyer",
+      "type": "mc",
+      "topic": "API design",
+      "prompt": "Hyrum's Law says all observable behavior of a popular API will be depended upon. Which engineering consequence follows?",
+      "options": [
+        "Your effective contract exceeds your documented contract — so constrain observability (randomize unspecified orderings, fuzz unspecified fields) or accept that 'bug fixes' are breaking changes requiring migration discipline",
+        "Documentation is pointless since nobody reads it",
+        "APIs should never be fixed once released",
+        "Only documented behavior can break clients, by definition"
+      ],
+      "correct_index": 0,
+      "answer_notes": "With enough users, someone depends on your error message strings, your JSON key order, your 'unspecified' sort order, your timeout behavior. Consequences: (1) treat behavior changes like interface changes — canary rollouts and telemetry on client breakage even for 'compatible' fixes; (2) deliberately deny footholds: shuffle unspecified orderings from day one (Go randomizes map iteration for exactly this reason), keep error text out of the contract by providing error codes; (3) contract tests pin what you DO promise; (4) for internal APIs, controlled-consumer visibility (monorepo-wide search before changing anything observable). The sophisticated position: Hyrum's Law is a budget, not a prohibition — popular APIs pay migration costs for any observable change, so spend observability surface deliberately. Connecting it to versioning strategy and to why 'just fix the bug' broke three teams marks the top tier.",
+      "difficulty_rationale": "API stewardship philosophy with concrete engineering responses — ends many design debates.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "occasional", "topics": ["api-design", "compatibility", "hyrums-law"] }
+    },
+    {
+      "id": "incident-forensics-kernel",
+      "type": "flashcard",
+      "topic": "Systems debugging",
+      "prompt": "P99 latency spikes every ~10 minutes, exactly, across all endpoints simultaneously; CPU, memory, and DB metrics look normal. Application-level profiling shows nothing. Take the investigation below the application.",
+      "answer_notes": "Exact periodicity + all-endpoints-simultaneous screams a shared scheduled actor, not request-driven code. Candidate layers and their tools: (1) Runtime: GC pauses (gc stats/logs — though CPython's refcounting rarely pauses long; JVM/Go apps absolutely), or a periodic in-process task starving the event loop (asyncio loop lag metric — instrument loop.time drift). (2) Host/container: cron jobs, log rotation with compression, backup agents (check crontabs, systemd timers, and pin the period against wall-clock alignment); CFS throttling if CPU limits are set (throttled_time in cgroup stats spikes while average CPU looks fine — the classic k8s trap); page-cache writeback storms (dirty-ratio flushes). (3) Infra: node-level neighbors (steal time), network — conntrack table cleanup, DNS TTL expiry causing synchronous re-resolution every N minutes (check resolver behavior and negative caching), load balancer health-check or connection-recycling cycles, TLS session/OCSP refresh. (4) Dependencies: a downstream's own periodic pain propagating; connection pool recycling (max lifetime settings reconnecting en masse — stagger with jitter). Method: correlate the exact period and phase against every timer you can enumerate; capture during the window (perf/eBPF, tcpdump, loop-lag histograms) rather than after. The ultra-expert habit: 'exactly periodic' is a gift — hunt the clock, not the code.",
+      "difficulty_rationale": "Below-the-application forensics with a systematic layer walk — the hardest debugging archetype interviews use.",
+      "tags": { "difficulty": "ultra-expert", "typicality": "curveball", "topics": ["debugging", "kernel", "operations", "performance"] }
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "id": "ai-engineer-l4",
+  "title": "AI Engineer — Level 4: Expert Depth",
+  "track": "ai-engineer",
+  "level": 4,
+  "description": "Serving internals, training dynamics, advanced agent reliability, and the hard trade-offs behind production LLM platforms.",
+  "questions": [
+    {
+      "id": "attention-complexity",
+      "type": "mc",
+      "topic": "Transformers",
+      "prompt": "Standard self-attention is O(n²) in sequence length. Which statement about long-context techniques is most accurate?",
+      "options": [
+        "FlashAttention reduces memory traffic and enables long contexts by tiling and recomputation, but keeps the O(n²) compute; sparse/linear attention variants change the asymptotics at some quality cost",
+        "FlashAttention makes attention O(n log n) in compute",
+        "RoPE positional encoding removes the quadratic cost entirely",
+        "KV caching makes prefill linear in sequence length"
+      ],
+      "correct_index": 0,
+      "answer_notes": "FlashAttention is an IO-aware exact algorithm: same O(n²) FLOPs, but avoids materializing the n×n matrix in HBM, so it's memory-bound-faster and enables much longer contexts. Approximate approaches (sliding-window, sparse, linear attention, state-space models) alter the asymptotics but trade recall on long-range dependencies. RoPE handles position representation, not cost; KV cache helps decode, prefill remains quadratic.",
+      "difficulty_rationale": "Distinguishes real understanding of attention economics from buzzword recall.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["transformers", "attention", "inference"] }
+    },
+    {
+      "id": "continuous-batching",
+      "type": "flashcard",
+      "topic": "Serving",
+      "prompt": "Explain how a modern LLM inference server (vLLM-style) achieves high GPU utilization: cover continuous batching and PagedAttention, and why naive batching fails.",
+      "answer_notes": "Naive/static batching waits to assemble a batch and holds it until the longest sequence finishes — short requests idle the GPU while long ones run, and padding wastes compute. Continuous batching schedules at the iteration level: each decode step, finished sequences leave and queued ones join, keeping the GPU saturated. PagedAttention manages the KV cache like virtual memory — fixed-size blocks, non-contiguous allocation — eliminating fragmentation and enabling near-full memory use plus prefix sharing across requests. Together they raise throughput several-fold at similar latency. Mention prefill/decode phase separation and chunked prefill as the current frontier.",
+      "difficulty_rationale": "Serving-infrastructure depth expected for platform-level AI roles.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["serving", "inference", "gpu"] }
+    },
+    {
+      "id": "rlhf-vs-dpo",
+      "type": "flashcard",
+      "topic": "Alignment training",
+      "prompt": "Compare RLHF (with PPO) and DPO for preference tuning: how does each work, and why has DPO become popular despite RLHF's flexibility?",
+      "answer_notes": "RLHF: train a reward model on human preference pairs, then optimize the policy with PPO against it, with a KL penalty to stay near the reference model. Powerful but operationally heavy: four models in memory, RL instability, reward hacking. DPO: derives a closed-form objective showing the policy can be optimized directly on preference pairs (implicitly defining the reward), turning it into a simple classification-style loss — stable, cheap, no reward model or rollouts. Trade-offs: DPO is offline and bounded by the preference dataset; RLHF supports online exploration, process rewards, and richer reward shaping. Follow-ups: KTO/IPO variants, and RLVR (verifiable rewards) for reasoning models.",
+      "difficulty_rationale": "Post-training literacy at expert level; asked at AI-first companies.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["training", "alignment", "rlhf"] }
+    },
+    {
+      "id": "agent-reliability",
+      "type": "flashcard",
+      "topic": "Agents & tool use",
+      "prompt": "Your production agent completes 85% of tasks; failures compound across its 10-20 step episodes. Design a reliability program to reach 95%+ — instrumentation, failure taxonomy, and concrete interventions.",
+      "answer_notes": "Instrument: full trajectory logging (every prompt, tool call, result), per-step and per-episode outcome labels, cost/latency per step. Build a failure taxonomy from sampled failures: wrong plan, wrong tool/arguments, bad tool output unhandled, context overflow/forgetting, premature termination, hallucinated state. Interventions mapped to causes: better tool descriptions and schemas (validation errors fed back), guardrail checks between steps (assertions on invariants), checkpointing + retry from last good state rather than episode restart, context compaction with structured scratchpads, sub-agent decomposition for long tasks, and an eval gym of replayable episodes so every change is A/B-able. Key point: per-step accuracy compounds (0.98^15 ≈ 0.74), so small step-level gains dominate; measure at both granularities.",
+      "difficulty_rationale": "Real operational agent engineering — the current frontier of senior interviews.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["agents", "reliability", "evals"] }
+    },
+    {
+      "id": "quantization-tradeoffs",
+      "type": "mc",
+      "topic": "Inference optimization",
+      "prompt": "You quantize a 70B model from BF16 to 4-bit to fit one GPU. Which effect is most likely and most important to verify?",
+      "options": [
+        "Small average benchmark degradation but potentially large regressions on specific capabilities (math, long-tail knowledge, low-resource languages) — so task-specific evals are mandatory",
+        "Uniform 50% quality loss across all tasks",
+        "No quality change whatsoever, since quantization is lossless",
+        "The model's context window shrinks proportionally to bit width"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Modern PTQ methods (GPTQ, AWQ, NF4) hold average benchmark scores close to baseline, but degradation is uneven — outlier-heavy layers and precise-recall tasks suffer disproportionately, and generation-quality issues (repetition, subtle reasoning errors) hide behind aggregate scores. Verify on your actual workload evals, not MMLU. Also know: weight-only vs weight+activation (W8A8) quantization, and KV-cache quantization as a separate lever for memory.",
+      "difficulty_rationale": "Expert-level deployment judgment: knowing where quantization bites.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["inference", "quantization", "evals"] }
+    },
+    {
+      "id": "multi-tenant-platform",
+      "type": "flashcard",
+      "topic": "System design",
+      "prompt": "Design an internal LLM gateway for a company with 30 product teams: requirements, architecture, and the three hardest problems you'd expect.",
+      "answer_notes": "Requirements: unified API across providers, authn/z per team, budgets and rate limits, observability (tracing, token accounting), prompt/PII governance, caching, failover. Architecture: a stateless proxy layer with provider adapters; central config for model routing and quotas; async log pipeline to a warehouse for cost attribution and eval mining; response and prefix caching; secrets isolation. Hardest problems: (1) fair rate limiting and cost attribution when providers meter differently (tokens vs requests) and teams share pooled capacity; (2) semantic observability — capturing enough to debug quality without hoarding sensitive data (sampling, redaction, retention); (3) keeping routing/failover from changing behavior — model versions differ, so failover needs per-route eval parity checks, not just liveness. Mention building on open standards and treating the gateway as a product with SLOs.",
+      "difficulty_rationale": "Platform-scale design; standard for staff/senior platform AI roles.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["system-design", "mlops", "serving"] }
+    },
+    {
+      "id": "distributed-training",
+      "type": "mc",
+      "topic": "Training at scale",
+      "prompt": "In large-model training, what problem does tensor parallelism solve that data parallelism cannot?",
+      "options": [
+        "The model's layers themselves exceed one device's memory, so individual weight matrices must be split across GPUs",
+        "The dataset is too large to fit on one machine",
+        "Gradients become too noisy with large batch sizes",
+        "The learning rate schedule needs per-GPU adjustment"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Data parallelism replicates the full model per GPU and shards the batch — it fails once the model itself doesn't fit. Tensor parallelism splits individual matmuls (column/row sharding with all-reduce/all-gather at boundaries) across devices; pipeline parallelism shards by layers with micro-batching to fill bubbles; ZeRO/FSDP shard optimizer state, gradients, and parameters across data-parallel ranks. Real systems compose all of these ('3D parallelism'). Know the communication cost hierarchy: TP needs the fastest interconnect (NVLink domain), PP tolerates slower links.",
+      "difficulty_rationale": "Expert training-infrastructure knowledge for roles touching model training.",
+      "tags": { "difficulty": "expert", "typicality": "occasional", "topics": ["training", "gpu", "distributed-systems"] }
+    },
+    {
+      "id": "guardrails-architecture",
+      "type": "flashcard",
+      "topic": "LLM security",
+      "prompt": "Architect the safety/guardrail layer for a customer-facing agent that can read user data and execute actions (refunds, account changes). Assume prompt injection will succeed sometimes.",
+      "answer_notes": "Defense in depth around the assumption of compromise: (1) Least privilege — the agent's tools expose narrow, parameterized operations with server-side authorization checks against the *authenticated user's* permissions, never the model's claims. (2) Deterministic policy enforcement outside the model: irreversible/high-value actions (refund > X) require human confirmation or step-up auth; the LLM can request, not execute. (3) Input hygiene: mark untrusted content, injection classifiers/heuristics on retrieved data. (4) Output controls: schema-constrained actions, moderation on user-visible text. (5) Blast-radius limits: rate/velocity caps per account, anomaly detection, full audit trail, kill switch. (6) Continuous red-teaming with injection corpora in CI. The interviewer wants 'the model is untrusted; the tool boundary is the security boundary' stated explicitly.",
+      "difficulty_rationale": "Security architecture under adversarial assumptions — expert bar at serious shops.",
+      "tags": { "difficulty": "expert", "typicality": "common", "topics": ["security", "agents", "system-design"] }
+    }
+  ]
+}

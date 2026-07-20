@@ -1,0 +1,109 @@
+{
+  "id": "developer-l3",
+  "title": "Developer — Level 3: Senior Craft",
+  "track": "developer",
+  "level": 3,
+  "description": "Async internals, transactions and isolation, design principles applied with judgment, debugging methodology, and performance work.",
+  "questions": [
+    {
+      "id": "asyncio-model",
+      "type": "flashcard",
+      "topic": "Concurrency",
+      "prompt": "Explain how asyncio actually works — event loop, coroutines, await — and the two classic ways teams misuse it in production.",
+      "answer_notes": "Single-threaded cooperative multitasking: the event loop runs one coroutine until it awaits something not ready (socket read, sleep), parks it with a callback registered on the I/O (epoll/kqueue via selectors), and runs another. `await` is a suspension point — between awaits, code runs uninterrupted (no data races on those sections, no locks needed for them). Misuse 1: blocking the loop — a synchronous DB driver, requests call, or CPU-heavy loop inside a coroutine freezes every task; fix with async drivers or loop.run_in_executor. Misuse 2: async-everything cargo cult — wrapping CPU-bound or low-concurrency work in async adds complexity for zero gain; async pays off at high-concurrency I/O (thousands of sockets), not in a batch script. Bonus signals: structured concurrency (TaskGroup), fire-and-forget task leaks (unawaited tasks silently swallowing exceptions — keep references, use done-callbacks), and backpressure via bounded queues/semaphores.",
+      "difficulty_rationale": "Senior Python roles probe the mental model, not the syntax.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["python", "asyncio", "concurrency"] }
+    },
+    {
+      "id": "isolation-levels",
+      "type": "mc",
+      "topic": "Databases",
+      "prompt": "Two concurrent transactions read a row (balance=100), each adds 50, each writes 150. The final balance is 150, not 200. Under READ COMMITTED, what is this anomaly and the standard fix?",
+      "options": [
+        "Lost update — fix with SELECT ... FOR UPDATE, an atomic UPDATE ... SET balance = balance + 50, or optimistic locking with a version column",
+        "Dirty read — fix by upgrading hardware",
+        "Phantom read — fix by adding an index",
+        "It's not an anomaly; databases guarantee this can't happen"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Read-modify-write races are not prevented by READ COMMITTED — both transactions read the committed 100. Fixes by philosophy: pessimistic (FOR UPDATE row lock serializes access), atomic in-place update (push the arithmetic into SQL — best when applicable), optimistic (version column + retry on conflict — best under low contention), or SERIALIZABLE isolation (database detects and aborts — retry loops required). Senior follow-ups: know the anomaly ladder (dirty read, non-repeatable read, phantom, write skew), that Postgres REPEATABLE READ is snapshot isolation which still allows write skew, and that SELECT ... FOR UPDATE ordering discipline prevents deadlocks.",
+      "difficulty_rationale": "Transaction correctness under concurrency — a hard senior filter.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["databases", "transactions", "concurrency"] }
+    },
+    {
+      "id": "solid-judgment",
+      "type": "flashcard",
+      "topic": "Software design",
+      "prompt": "Beyond reciting SOLID: which design principles actually guide your daily decisions, and where do the classic principles get over-applied?",
+      "answer_notes": "The load-bearing ones: dependency inversion at real boundaries (business logic doesn't import the database driver — this is what makes testing and swapping possible); single responsibility read as 'one reason to change' (cohesion, not 'one method per class'); and composition over inheritance (deep hierarchies calcify). Over-application to call out: interface-everything in languages with duck typing (a Java habit taxing Python code), speculative abstraction for futures that never arrive (YAGNI — the wrong abstraction costs more than duplication, per Sandi Metz), and pattern-collecting (a Factory wrapping a constructor). The principles behind the principles: optimize for change you have evidence of, keep the blast radius of a change small, and make wrong code look wrong. Strong answer includes a concrete story: an abstraction you removed, or duplication you deliberately kept.",
+      "difficulty_rationale": "Tests taste and judgment rather than acronym recall — the senior signal.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["design", "architecture", "refactoring"] }
+    },
+    {
+      "id": "debugging-methodology",
+      "type": "flashcard",
+      "topic": "Debugging",
+      "prompt": "A bug appears in production roughly once a day; it has never reproduced locally. Walk through your systematic approach.",
+      "answer_notes": "Stop guessing, start observing: harvest everything from the failures you have — logs around each occurrence, request IDs, stack traces, the affected entities — and diff the failing requests against similar successful ones (time of day, payload shape, user attributes, pod/host, deploy version). Form hypotheses ranked by evidence; for each, ask 'what extra logging/metric would confirm or kill this?' and ship that instrumentation — next occurrence becomes data, not mystery. Usual suspects for once-a-day-heisenbugs: concurrency races (correlate with load spikes), state accumulated over time (leaks, caches — correlate with process uptime), timeouts at dependency edges, timezone/day-boundary logic, and retry/duplicate-delivery interactions. If evidence points to a race, targeted stress test in staging with production-shaped concurrency. Fix root cause, add the regression test AND the alert that would catch recurrence, write the timeline down. The interviewer grades the discipline: evidence → hypothesis → instrumentation → confirmation, not 'I'd read the code very carefully.'",
+      "difficulty_rationale": "Debugging methodology under uncertainty is a defining senior craft question.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["debugging", "observability", "methodology"] }
+    },
+    {
+      "id": "profiling-first",
+      "type": "mc",
+      "topic": "Performance",
+      "prompt": "An endpoint is 'too slow' and three engineers propose three different optimizations. What is the senior move?",
+      "options": [
+        "Profile first: measure where the time actually goes (APM trace, py-spy, EXPLAIN) — optimizing without a profile is guessing, and the bottleneck is usually not where intuition points",
+        "Implement all three optimizations to be safe",
+        "Rewrite the endpoint in Rust",
+        "Add more application servers immediately"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Measurement beats opinion: a distributed trace splits time across DB, network, serialization, and compute; py-spy/cProfile finds hot Python; EXPLAIN ANALYZE exposes the query plan. Typical realities: one missing index, N+1 queries, serializing a giant payload, or synchronous calls to a slow dependency — none fixed by micro-optimizing the loop someone suspected. Then: fix the biggest term, re-measure, stop when the SLO is met (optimization has diminishing returns and readability costs). Amdahl's law framing earns points: speeding up 5% of the time budget caps total gain at 5%. Also state the target explicitly — 'fast enough for what?'",
+      "difficulty_rationale": "The measure-first discipline, tested via a realistic team scenario.",
+      "tags": { "difficulty": "advanced", "typicality": "staple", "topics": ["performance", "profiling", "methodology"] }
+    },
+    {
+      "id": "message-queue-semantics",
+      "type": "mc",
+      "topic": "Distributed systems",
+      "prompt": "Your worker consumes from a queue with at-least-once delivery. The handler sends a welcome email and marks the user active in the DB. What subtle bug ships if you write it naively?",
+      "options": [
+        "On redelivery (after a crash between side effects or a late ack) the email sends twice or DB and email disagree — handlers must be idempotent and side effects coordinated (dedupe key, outbox, or effect ledger)",
+        "The queue will deadlock against the database",
+        "Emails cannot be sent from workers, only from web servers",
+        "Nothing — at-least-once means exactly one processing in practice"
+      ],
+      "correct_index": 0,
+      "answer_notes": "At-least-once means duplicates are a *promise*, not an edge case: crash after email but before ack → redelivery → second email. Discipline: make the handler idempotent per side effect — dedupe table keyed by (message_id, effect) checked-and-recorded atomically with the DB write; email via a provider idempotency key. For DB+publish atomicity, the transactional outbox. Also know: ordering isn't guaranteed either (design for out-of-order), poison messages need a dead-letter queue with alerting, and 'exactly-once delivery' marketing means 'at-least-once + idempotent effects' or transactions within one system's boundary. This question quietly measures whether someone has operated queue consumers for real.",
+      "difficulty_rationale": "The at-least-once idempotency trap — a high-signal senior distributed-systems check.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["distributed-systems", "queues", "reliability"] }
+    },
+    {
+      "id": "memory-leak-python",
+      "type": "flashcard",
+      "topic": "Python internals",
+      "prompt": "A long-running Python service's memory grows unboundedly over days. Python is garbage-collected — so explain where 'leaks' come from and how you hunt one down.",
+      "answer_notes": "GC frees unreachable objects; leaks are objects kept *reachable* by accident: module-level caches/dicts that only grow (memoization without eviction), append-only lists (metrics, history), closures/callbacks registered and never removed, exception tracebacks pinned in long-lived frames, and C-extension memory invisible to gc. Also distinguish true leaks from fragmentation/RSS plateaus (allocator behavior) and from 'the process just needs that much' (load-correlated, not time-correlated). Hunt: confirm the trend (RSS over uptime, restarts flatten it?); tracemalloc snapshots diffed over hours show which allocation sites grow; objgraph growth stats and referrer chains identify who's holding references; heap dump comparison in staging under replayed load. Fixes: bounded caches (LRU with maxsize), explicit lifecycle for registrations (weakrefs where appropriate), and a memory-growth alert. Pragmatic truth worth saying: scheduled restarts are a mitigation while you hunt, not a fix.",
+      "difficulty_rationale": "Real production forensics; separates operators from script writers.",
+      "tags": { "difficulty": "advanced", "typicality": "occasional", "topics": ["python", "memory", "debugging"] }
+    },
+    {
+      "id": "api-pagination",
+      "type": "mc",
+      "topic": "API design",
+      "prompt": "Your list endpoint uses OFFSET/LIMIT pagination. At page 5000 it's slow, and users report skipped/duplicated items while paging. What is the senior-grade replacement?",
+      "options": [
+        "Cursor (keyset) pagination: return an opaque cursor encoding the last row's sort key, and fetch WHERE (sort_key) > cursor ORDER BY sort_key LIMIT n — stable under concurrent writes and O(page) regardless of depth",
+        "Cache every page in Redis for an hour",
+        "Increase the page size to 10,000 to reduce page count",
+        "Tell users not to page that deep"
+      ],
+      "correct_index": 0,
+      "answer_notes": "OFFSET n scans and discards n rows (deep pages get linearly slower), and concurrent inserts/deletes shift row positions between requests — items skip or repeat. Keyset pagination seeks directly via an index on a unique, stable sort key (created_at + id tiebreaker), making every page equally cheap and consistent relative to the cursor. Trade-offs to name: no random access ('jump to page 500' — usually a non-requirement), sort key must be indexed and immutable, cursor should be opaque (base64) so clients don't couple to internals. This exact question — including the 'why do items repeat' symptom — is an interview favorite because it bundles SQL, API design, and concurrency reasoning.",
+      "difficulty_rationale": "Bundles indexing, consistency, and API contract thinking in one realistic symptom.",
+      "tags": { "difficulty": "advanced", "typicality": "common", "topics": ["api-design", "sql", "performance"] }
+    }
+  ]
+}

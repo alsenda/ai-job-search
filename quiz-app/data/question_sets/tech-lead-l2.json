@@ -1,0 +1,102 @@
+{
+  "id": "tech-lead-l2",
+  "title": "Tech Lead — Level 2: Running a Team's Engine",
+  "track": "tech-lead",
+  "level": 2,
+  "description": "Delegation, mentoring, incident basics, API and data design, and keeping delivery predictable.",
+  "questions": [
+    {
+      "id": "delegation",
+      "type": "flashcard",
+      "topic": "Leadership",
+      "prompt": "You're the strongest engineer on the team and the critical-path work keeps landing on you. Why is this a failure mode, and how do you fix it?",
+      "answer_notes": "It's a bus-factor risk, it caps team throughput at your personal capacity, and it starves others of growth — the lead's job is multiplying others, not hoarding hero work. Fix: deliberately delegate stretch work with context and safety nets (pairing, design review checkpoints), accept short-term slowdown as an investment, document tribal knowledge, and redirect your time to unblocking, reviewing, and the work only you can do (architecture, cross-team alignment). Signal to watch: if you can't take two weeks off without delivery stalling, you're a bottleneck, not a lead.",
+      "difficulty_rationale": "Standard behavioral probe on the IC-to-lead transition.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["leadership", "delegation", "behavioral"] }
+    },
+    {
+      "id": "mentoring-junior",
+      "type": "flashcard",
+      "topic": "Mentoring",
+      "prompt": "A junior engineer's PRs need heavy rework every time and reviews are becoming friction. How do you turn this around?",
+      "answer_notes": "Diagnose before prescribing: is it unclear requirements, missing patterns knowledge, or skipped self-review? Interventions in order: shift feedback earlier — design conversation or a 15-minute pairing session before code is written beats 40 review comments after; give them a pre-submit checklist built from their own recurring feedback; pair on one exemplar PR end-to-end; point at codebase exemplars to imitate. Keep review tone about the code, praise real improvements, and track trend not incidents. Escalate expectations explicitly only if no trend after sustained support. The interviewer looks for empathy plus structure, not 'I'd just review harder'.",
+      "difficulty_rationale": "Mentoring mechanics — a staple scenario for lead roles.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["mentoring", "code-review", "behavioral"] }
+    },
+    {
+      "id": "incident-first-hour",
+      "type": "flashcard",
+      "topic": "Incident handling",
+      "prompt": "Production is down and you're the senior person online. Walk through your first hour, minute by phase.",
+      "answer_notes": "1) Declare the incident and take (or assign) incident command — one coordinator, distinct from hands-on-keyboard. 2) Communicate immediately: status page/stakeholder channel with a cadence promise ('update every 20 min'). 3) Mitigate before root-causing: roll back the last deploy, flip feature flags, shed load, fail over — restore service first; the 'why' comes later. 4) Preserve evidence (logs, dashboards, timeline notes as you go). 5) Escalate for expertise without shame. 6) When stable: declare recovery criteria met, thank responders, schedule the blameless postmortem within days. Anti-patterns to name: debugging root cause while users bleed, silent heroics, a dozen people all typing in prod.",
+      "difficulty_rationale": "Incident-response competence is a hard requirement for lead roles.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["incidents", "operations"] }
+    },
+    {
+      "id": "api-versioning",
+      "type": "mc",
+      "topic": "API design",
+      "prompt": "Your public REST API needs a breaking change. What is the standard professional approach?",
+      "options": [
+        "Ship the new behavior under a new version, support both during a communicated deprecation window with migration docs, and monitor old-version usage before sunset",
+        "Change the behavior in place — clients should read the changelog",
+        "Break it on a Friday so there's a weekend to fix fallout",
+        "Never change anything, forever, regardless of cost"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Contracts with external consumers are promises: additive changes are safe; breaking changes (removing/renaming fields, changing semantics) require a new version (URL or header-based), deprecation notices with dates, migration guides, and telemetry on old-version usage so sunset is data-driven, plus direct outreach to heavy users. Internally: consumer-driven contract tests catch accidental breaks. Also fair: aggressive-but-communicated deprecation beats eternal support of five versions.",
+      "difficulty_rationale": "Bread-and-butter API stewardship for leads.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["api-design", "versioning"] }
+    },
+    {
+      "id": "sql-vs-nosql",
+      "type": "mc",
+      "topic": "Data architecture",
+      "prompt": "A new service needs a primary datastore. When is choosing a relational database (Postgres) over a document/NoSQL store the right default?",
+      "options": [
+        "Almost always at the start: relational handles evolving access patterns, transactions, and ad-hoc queries; choose NoSQL when a specific access pattern or scale requirement demands it",
+        "Only when the data has fewer than 10 tables",
+        "Never — NoSQL is strictly more modern",
+        "Only for financial applications, which are legally required to use SQL"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Postgres as default: ACID transactions, joins for unforeseen queries, mature tooling, schema as documentation — and it scales further than most products ever need (plus JSONB for document-ish needs). Reach for specialized stores on demonstrated need: extreme write throughput or global distribution (Cassandra/Dynamo-style), graph traversals, caching (Redis), search (Elasticsearch), vectors. The interview signal: default to boring, deviate on measured requirements, and name the trade-off you accept (e.g. Dynamo's query rigidity).",
+      "difficulty_rationale": "Perennial architecture choice; tests default-to-boring judgment.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["databases", "architecture", "trade-offs"] }
+    },
+    {
+      "id": "scope-creep",
+      "type": "flashcard",
+      "topic": "Stakeholder management",
+      "prompt": "Mid-sprint, the product manager brings 'one small addition' for the third time this week. How do you handle it without becoming the department of no?",
+      "answer_notes": "Make trade-offs visible instead of refusing: 'yes, and here's what moves out' — additions displace committed work; the PM chooses the trade, you provide honest sizing. If smalls keep arriving, fix the system: reserve explicit buffer capacity for genuine urgencies, tighten refinement so 'small' gets sized honestly (many smalls aren't), and raise the pattern in retro with data. Escalate only when trade-offs can't be agreed at your level. Signals interviewers want: partnership tone, protecting team focus, and process-level thinking over per-request firefighting.",
+      "difficulty_rationale": "Weekly reality for leads; a staple stakeholder scenario.",
+      "tags": { "difficulty": "intermediate", "typicality": "staple", "topics": ["stakeholders", "planning", "behavioral"] }
+    },
+    {
+      "id": "caching-strategy",
+      "type": "mc",
+      "topic": "System design",
+      "prompt": "You add a Redis cache in front of a slow database query. Which pair of concerns must your design answer before shipping?",
+      "options": [
+        "Invalidation strategy (how stale data gets refreshed or evicted) and failure behavior (what happens when the cache is down or cold)",
+        "Which team owns the Redis license and the logo color",
+        "Whether Redis supports JSON and the number of availability zones",
+        "The cache hit rate target and nothing else"
+      ],
+      "correct_index": 0,
+      "answer_notes": "Invalidation: TTL-based staleness bounds vs event-driven invalidation on writes; write-through vs cache-aside; acceptable staleness is a product decision to surface. Failure: cache-down must degrade gracefully (fall through with load shedding/circuit breaker — beware thundering-herd stampedes on cold start; use request coalescing or jittered TTLs). Also worth naming: cache keys and versioning, and monitoring hit rate in production. 'There are only two hard things…' — the joke lands, but the design answer must be concrete.",
+      "difficulty_rationale": "Standard system-design fragment leads must handle fluently.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["caching", "system-design", "reliability"] }
+    },
+    {
+      "id": "testing-strategy",
+      "type": "flashcard",
+      "topic": "Quality",
+      "prompt": "Define a pragmatic testing strategy for a typical web service — what layers, in what proportion, and what do you explicitly not test?",
+      "answer_notes": "Shape: many fast unit tests on logic with real complexity (pure functions, business rules); a solid layer of integration tests on the seams that actually break (DB queries, API contracts, auth) — often the highest-value layer; few end-to-end tests on critical user journeys only, because they're slow and flaky. Don't test: framework behavior, trivial getters, private implementation details (test behavior, not structure — tests shouldn't break on refactors). Add: contract tests for consumed/provided APIs, and a regression test with every bug fix. Meta-point interviewers reward: coverage percentage is a diagnostic, not a goal; test flakiness is a first-class defect because it erodes trust in the suite.",
+      "difficulty_rationale": "Every lead sets testing policy; fluency here is expected.",
+      "tags": { "difficulty": "intermediate", "typicality": "common", "topics": ["testing", "quality"] }
+    }
+  ]
+}
